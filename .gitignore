@@ -1,0 +1,5 @@
+.pio
+.vscode
+.build
+file_content.py
+test.txt
