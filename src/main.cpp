@@ -9,9 +9,8 @@
 #include "freertos/task.h"
 #include "idrive.h"
 
-// Pins for CAN TX and RX on your ESP32-S3
-#define RX_PIN 5
-#define TX_PIN 4
+#define RX_PIN 4
+#define TX_PIN 5
 
 static const char* TAG = "MAIN";
 
@@ -25,10 +24,8 @@ static void setupTWAI() {
   twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(
       (gpio_num_t)TX_PIN, (gpio_num_t)RX_PIN, TWAI_MODE_NORMAL);
 
-  twai_timing_config_t t_config =
-      TWAI_TIMING_CONFIG_500KBITS(); 
-       // Look in the api-reference for other
-                                      // speed sets.
+  twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
+
   twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
   esp_err_t err = twai_driver_install(&g_config, &t_config, &f_config);
@@ -46,21 +43,21 @@ static void setupTWAI() {
     ESP_LOGE(TAG, "TWAI driver start failed: %s", esp_err_to_name(err));
   }
 
-  // Reconfigure alerts to detect TX alerts and Bus-Off errors
-  uint32_t alerts_to_enable = TWAI_ALERT_TX_IDLE | TWAI_ALERT_TX_SUCCESS |
-                              TWAI_ALERT_TX_FAILED | TWAI_ALERT_ERR_PASS |
-                              TWAI_ALERT_BUS_ERROR;
+  // // Reconfigure alerts to detect TX alerts and Bus-Off errors
+  // uint32_t alerts_to_enable = TWAI_ALERT_TX_IDLE | TWAI_ALERT_TX_SUCCESS |
+  //                             TWAI_ALERT_TX_FAILED | TWAI_ALERT_ERR_PASS |
+  //                             TWAI_ALERT_BUS_ERROR;
 
-  if (twai_reconfigure_alerts(alerts_to_enable, NULL) == ESP_OK) {
-    ESP_LOGI(TAG, "CAN Alerts reconfigured");
-  } else {
-    ESP_LOGI(TAG, "Failed to reconfigure alerts");
-    return;
-  }
+  // if (twai_reconfigure_alerts(alerts_to_enable, NULL) == ESP_OK) {
+  //   ESP_LOGI(TAG, "CAN Alerts reconfigured");
+  // } else {
+  //   ESP_LOGI(TAG, "Failed to reconfigure alerts");
+  //   return;
+  // }
 
-  twai_status_info_t status;
-  twai_get_status_info(&status);
-  ESP_LOGI(TAG, "TWAI state 0x%X", status.state);
+  // twai_status_info_t status;
+  // twai_get_status_info(&status);
+  // ESP_LOGI(TAG, "TWAI state 0x%X", status.state);
 }
 
 extern "C" void app_main(void) {
@@ -69,10 +66,8 @@ extern "C" void app_main(void) {
   // Initialize global variables
   previousMillis = getMillis();
 
-  // Setup TWAI (CAN)
   setupTWAI();
 
-  // iDrive initialization
   iDriveInit();
   iDriveTouchpadInit();
 
@@ -95,7 +90,6 @@ extern "C" void app_main(void) {
     }
 
     // Periodic tasks
-    // We'll approximate 'millis()' by getMillis()
     uint32_t now = getMillis();
 
     // Light init logic
@@ -115,10 +109,6 @@ extern "C" void app_main(void) {
     iDriveLight(iDriveLightTime);
 
     // Tiny delay so we don't hog the CPU
-    vTaskDelay(pdMS_TO_TICKS(5000));
-
-    twai_status_info_t status;
-    twai_get_status_info(&status);
-    ESP_LOGI(TAG, "TWAI state 0x%X", status.state);
+    vTaskDelay(pdMS_TO_TICKS(5));
   }
 }

@@ -121,7 +121,4 @@ void decodeCanBus(unsigned long canId, uint8_t len, uint8_t *buf) {
       TouchpadInitIgnoreCounter = 0;
     }
   }
-
-  // You could decode more frames if you want.
-  // For now, just prints them all.
 }
