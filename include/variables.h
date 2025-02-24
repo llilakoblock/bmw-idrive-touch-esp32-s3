@@ -46,7 +46,7 @@ extern const int mouse_center_range_v2;
 extern const int x_multiplier;
 extern const int y_multiplier;
 
-// Key state array (like original)
+// Key state array
 extern uint8_t stati[256];
 
 #endif
