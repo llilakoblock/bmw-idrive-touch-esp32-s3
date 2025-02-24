@@ -1,20 +1,6 @@
 #ifndef KEYASSIGNMENTS_H
 #define KEYASSIGNMENTS_H
 
-/*=========================================================================*/
-/* Original "AT+BLEKEYBOARDCODE" replaced with standard HID scancodes.     */
-/*
-   See typical usage in "USBHIDHandler" for actual press/release.
-*/
-/*=========================================================================*/
-
-/*
-   The original code had #define KEY_MENU_AT "AT+BLEKEYBOARDCODE=..." etc.
-   We now define numeric HID keycodes.
-   For reference, TinyUSB or many Arduino HID libs define:
-     0x04 -> 'a', 0x05 -> 'b', 0x06 -> 'c', ... 0x10 -> 'm', etc.
-*/
-
 #define HID_KEY_A 0x04
 #define HID_KEY_B 0x05
 #define HID_KEY_C 0x06
@@ -58,7 +44,7 @@
 #define KEY_UP_KB HID_KEY_U
 #define KEY_DOWN_KB HID_KEY_D  // or HID_KEY_DD
 #define KEY_LEFT_KB HID_KEY_L
-#define KEY_RIGHT_KB HID_KEY_R  // But conflict with 'r'? Up to you
+#define KEY_RIGHT_KB HID_KEY_R  // But conflict with 'r'?
 
 // Rotations
 #define KEY_ROTATE_PLUS_KB HID_KEY_VOLUP

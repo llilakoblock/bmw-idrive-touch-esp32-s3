@@ -3,10 +3,6 @@
 
 #include <stdint.h>
 
-/*=========================================================================*/
-/* iDrive CAN IDs and message definitions from original code               */
-/*=========================================================================*/
-
 // Incoming
 #define MSG_IN_INPUT 0x267
 #define MSG_INPUT_BUTTON 0xC0
@@ -48,7 +44,7 @@
 // Outgoing
 #define MSG_OUT_ROTARY_INIT 0x273
 #define MSG_OUT_LIGHT 0x202
-#define MSG_OUT_POLL 0x501  // or 0x563 in original comment
+#define MSG_OUT_POLL 0x501  // or 0x563
 
 // Functions
 void iDriveInit();
