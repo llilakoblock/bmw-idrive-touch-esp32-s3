@@ -1,0 +1,98 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+.clang_complete
+.gcc-flags.json
+compile_commands.json
+
+# ESP-IDF
+build/
+sdkconfig
+sdkconfig.old
+*.pyc
+__pycache__/
+
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/c_cpp_properties.json
+*.code-workspace
+
+# Build artifacts
+*.elf
+*.bin
+*.map
+*.a
+*.o
+*.d
+firmware/
+release/
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*.bak
+*.swp
+*.swo
+*~
+config_backup/
+
+# Generated files
+main/version.h
+FLASH_INSTRUCTIONS.txt
+build_report.txt
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Unity test results
+test/results/
+
+# Documentation
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# Python virtual environment
+venv/
+env/
+.env
+
+# Credentials and secrets
+secrets.h
+credentials.h
+*.key
+*.pem
+
+# Core dumps
+core
+core.*
+
+# CTags
+tags
+TAGS
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
