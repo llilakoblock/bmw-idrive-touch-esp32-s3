@@ -117,6 +117,6 @@ extern "C" void app_main(void)
         iDriveLight(iDriveLightTime);
 
         // Tiny delay so we don't hog the CPU
-        vTaskDelay(pdMS_TO_TICKS(5));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }

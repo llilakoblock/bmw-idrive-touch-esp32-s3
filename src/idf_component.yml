@@ -1,0 +1,2 @@
+dependencies:
+  esp_tinyusb: "^1.0.0" # Automatically update minor releases

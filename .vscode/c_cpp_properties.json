@@ -1,8 +1,3 @@
-//
-// !!! WARNING !!! AUTO-GENERATED FILE!
-// PLEASE DO NOT MODIFY IT AND USE "platformio.ini":
-// https://docs.platformio.org/page/projectconf/section_env_build.html#build-flags
-//
 {
     "configurations": [
         {
@@ -10,7 +5,6 @@
             "includePath": [
                 "C:/Users/eed05/.git/bmw-idrive-touch-esp32-s3/include",
                 "C:/Users/eed05/.git/bmw-idrive-touch-esp32-s3/src",
-                "C:/Users/eed05/.git/bmw-idrive-touch-esp32-s3/.pio/libdeps/esp32-s3-devkitc-1/esp-usb",
                 "C:/Users/eed05/.platformio/packages/framework-espidf/components/xtensa/esp32s3/include",
                 "C:/Users/eed05/.platformio/packages/framework-espidf/components/xtensa/include",
                 "C:/Users/eed05/.platformio/packages/framework-espidf/components/xtensa/deprecated_include",
@@ -35,7 +29,6 @@
                 "C:/Users/eed05/.platformio/packages/framework-espidf/components/esp_hw_support/port/esp32s3",
                 "C:/Users/eed05/.platformio/packages/framework-espidf/components/esp_hw_support/port/esp32s3/include",
                 "C:/Users/eed05/.platformio/packages/framework-espidf/components/esp_hw_support/mspi_timing_tuning/port/esp32s3",
-                "C:/Users/eed05/.platformio/packages/framework-espidf/components/esp_hw_support/mspi_timing_tuning/port/esp32s3/include",
                 "C:/Users/eed05/.platformio/packages/framework-espidf/components/heap/include",
                 "C:/Users/eed05/.platformio/packages/framework-espidf/components/heap/tlsf",
                 "C:/Users/eed05/.platformio/packages/framework-espidf/components/log/include",
@@ -184,14 +177,17 @@
                 "C:/Users/eed05/.platformio/packages/framework-espidf/components/touch_element/include",
                 "C:/Users/eed05/.platformio/packages/framework-espidf/components/usb/include",
                 "C:/Users/eed05/.platformio/packages/framework-espidf/components/wifi_provisioning/include",
-                ""
+                "C:/Users/eed05/.git/bmw-idrive-touch-esp32-s3/.pio/libdeps/esp32-s3-devkitc-1/esp-usb",
+                "",
+                "${workspaceFolder}/components/esp_tinyusb/include",
+                "${workspaceFolder}/managed_components/espressif__tinyusb/src",
+                "${workspaceFolder}/managed_components/espressif__esp_tinyusb/include"
             ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
                     "C:/Users/eed05/.git/bmw-idrive-touch-esp32-s3/include",
                     "C:/Users/eed05/.git/bmw-idrive-touch-esp32-s3/src",
-                    "C:/Users/eed05/.git/bmw-idrive-touch-esp32-s3/.pio/libdeps/esp32-s3-devkitc-1/esp-usb",
                     "C:/Users/eed05/.platformio/packages/framework-espidf/components/xtensa/esp32s3/include",
                     "C:/Users/eed05/.platformio/packages/framework-espidf/components/xtensa/include",
                     "C:/Users/eed05/.platformio/packages/framework-espidf/components/xtensa/deprecated_include",
@@ -216,7 +212,6 @@
                     "C:/Users/eed05/.platformio/packages/framework-espidf/components/esp_hw_support/port/esp32s3",
                     "C:/Users/eed05/.platformio/packages/framework-espidf/components/esp_hw_support/port/esp32s3/include",
                     "C:/Users/eed05/.platformio/packages/framework-espidf/components/esp_hw_support/mspi_timing_tuning/port/esp32s3",
-                    "C:/Users/eed05/.platformio/packages/framework-espidf/components/esp_hw_support/mspi_timing_tuning/port/esp32s3/include",
                     "C:/Users/eed05/.platformio/packages/framework-espidf/components/heap/include",
                     "C:/Users/eed05/.platformio/packages/framework-espidf/components/heap/tlsf",
                     "C:/Users/eed05/.platformio/packages/framework-espidf/components/log/include",
@@ -365,6 +360,7 @@
                     "C:/Users/eed05/.platformio/packages/framework-espidf/components/touch_element/include",
                     "C:/Users/eed05/.platformio/packages/framework-espidf/components/usb/include",
                     "C:/Users/eed05/.platformio/packages/framework-espidf/components/wifi_provisioning/include",
+                    "C:/Users/eed05/.git/bmw-idrive-touch-esp32-s3/.pio/libdeps/esp32-s3-devkitc-1/esp-usb",
                     ""
                 ]
             },
@@ -382,9 +378,6 @@
                 "ARDUINO_USB_MODE=1",
                 "ARDUINO_RUNNING_CORE=1",
                 "ARDUINO_EVENT_RUNNING_CORE=1",
-                "CONFIG_TINYUSB_ENABLED=1",
-                "CFG_TUSB_MCU=OPT_MCU_ESP32S3",
-                "CONFIG_USB_ENABLED=1",
                 ""
             ],
             "cStandard": "gnu17",

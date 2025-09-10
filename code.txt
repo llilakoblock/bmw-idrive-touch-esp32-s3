@@ -1,29 +1,18 @@
 --- CMakeLists.txt ---
-cmake_minimum_required(VERSION 3.16.0)
+cmake_minimum_required(VERSION 3.16)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-
 project(idrive)
 
---- idf_component.yml ---
-dependencies:
-  espressif/esp_tinyusb: "^1.1"
-
 --- platformio.ini ---
-; PlatformIO Project Configuration File
-;
-;   Build options: build flags, source filter
-;   Upload options: custom upload port, speed and extra flags
-;   Library options: dependencies, extra library storages
-;   Advanced options: extra scripting
-;
-; Please visit documentation for the other options and examples
-; https://docs.platformio.org/page/projectconf.html
-
 [env:esp32-s3-devkitc-1]
 platform = espressif32
 board = esp32-s3-devkitc-1
 framework = espidf
 
+monitor_speed = 115200
+
+board_build.cmake_extra_args = 
+    -DSDKCONFIG_DEFAULTS="sdkconfig.defaults"
 
 --- include\idrive.h ---
 #ifndef IDRIVE_H
@@ -258,35 +247,25 @@ extern int ignored_responses[];
 extern "C" {
 #endif
 
-//--------------------------------------------------------------------
-// COMMON CONFIGURATION
-//--------------------------------------------------------------------
+// Board specific
+#define CFG_TUSB_MCU OPT_MCU_ESP32S3
 
-// defined by compiler flag for flexibility
-#ifndef CFG_TUSB_MCU
-    #define CFG_TUSB_MCU OPT_MCU_ESP32S3
-#endif
+// RHPort number used for device can be defined by board.mk, default to port 0
+#define BOARD_TUD_RHPORT 0
 
-#ifndef CFG_TUSB_OS
-    #define CFG_TUSB_OS OPT_OS_FREERTOS
-#endif
+// RHPort max operational speed can defined by board.mk
+#define BOARD_TUD_MAX_SPEED OPT_MODE_DEFAULT_SPEED
 
+// Common configuration
+#define CFG_TUSB_RHPORT0_MODE (OPT_MODE_DEVICE | OPT_MODE_DEFAULT_SPEED)
+#define CFG_TUSB_OS           OPT_OS_FREERTOS
+
+// Debug
 #ifndef CFG_TUSB_DEBUG
     #define CFG_TUSB_DEBUG 0
 #endif
 
-// Enable Device stack
-#define CFG_TUD_ENABLED 1
-
-// CFG_TUSB_DEBUG is defined by compiler in DEBUG build
-// #define CFG_TUSB_DEBUG           0
-
-/* USB DMA on some MCUs can only access a specific SRAM region with restriction
- * on alignment. Tinyusb use follows macros to declare transferring memory so
- * that they can be put into those specific section. e.g
- * - CFG_TUSB_MEM SECTION : __attribute__ (( section(".usb_ram") ))
- * - CFG_TUSB_MEM_ALIGN   : __attribute__ ((aligned(4)))
- */
+// Memory section
 #ifndef CFG_TUSB_MEM_SECTION
     #define CFG_TUSB_MEM_SECTION
 #endif
@@ -295,39 +274,24 @@ extern "C" {
     #define CFG_TUSB_MEM_ALIGN __attribute__((aligned(4)))
 #endif
 
-//--------------------------------------------------------------------
-// DEVICE CONFIGURATION
-//--------------------------------------------------------------------
+// Device configuration
+#define CFG_TUD_ENDPOINT0_SIZE 64
 
-#ifndef CFG_TUD_ENDPOINT0_SIZE
-    #define CFG_TUD_ENDPOINT0_SIZE 64
-#endif
-
-//------------- CLASS -------------//
+// Class drivers
 #define CFG_TUD_HID    1
 #define CFG_TUD_CDC    0
 #define CFG_TUD_MSC    0
 #define CFG_TUD_MIDI   0
 #define CFG_TUD_VENDOR 0
 
-// HID buffer size Should be sufficient to hold ID (if any) + Data
-#define CFG_TUD_HID_EP_BUFSIZE 16
-
-// CDC FIFO size of TX and RX
-#define CFG_TUD_CDC_RX_BUFSIZE (TUD_OPT_HIGH_SPEED ? 512 : 64)
-#define CFG_TUD_CDC_TX_BUFSIZE (TUD_OPT_HIGH_SPEED ? 512 : 64)
-
-// CDC Endpoint transfer buffer size, more is faster
-#define CFG_TUD_CDC_EP_BUFSIZE (TUD_OPT_HIGH_SPEED ? 512 : 64)
-
-// MSC Buffer size of Device Mass storage
-#define CFG_TUD_MSC_EP_BUFSIZE 512
+// HID buffer size
+#define CFG_TUD_HID_EP_BUFSIZE 64
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* TUSB_CONFIG_H */
+#endif
 
 --- include\usb_hid_device.h ---
 #ifndef USB_HID_DEVICE_H
@@ -514,13 +478,15 @@ extern uint8_t stati[256];
 
 
 --- src\CMakeLists.txt ---
-# This file was automatically generated for projects
-# without default 'CMakeLists.txt' file.
+idf_component_register(
+    SRCS "main.cpp" "idrive.cpp" "variables.cpp" "usb_hid_device.c"
+    INCLUDE_DIRS "../include"
+    REQUIRES driver freertos esp_timer
+)
 
-FILE(GLOB_RECURSE app_sources ${CMAKE_SOURCE_DIR}/src/*.*)
-
-idf_component_register(SRCS ${app_sources})
-
+--- src\idf_component.yml ---
+dependencies:
+  esp_tinyusb: "^1.0.0" # Automatically update minor releases
 
 --- src\idrive.cpp ---
 #include "idrive.h"
@@ -1090,8 +1056,7 @@ extern "C" void app_main(void)
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 
-// ESP-IDF includes for TinyUSB
-
+// ESP TinyUSB includes
 #include "class/hid/hid_device.h"
 #include "tinyusb.h"
 
@@ -1104,175 +1069,85 @@ static SemaphoreHandle_t hid_mutex = NULL;
 static bool usb_connected = false;
 
 // Report IDs
-#define REPORT_ID_KEYBOARD 1
-#define REPORT_ID_MOUSE    2
-#define REPORT_ID_CONSUMER 3
+enum { REPORT_ID_KEYBOARD = 1, REPORT_ID_MOUSE, REPORT_ID_CONSUMER };
 
-// HID Report Descriptor for composite device (Keyboard + Mouse + Consumer Control)
+// HID Report Descriptor
 static const uint8_t hid_report_descriptor[] = {
-    // Keyboard
-    0x05, 0x01,                // Usage Page (Generic Desktop)
-    0x09, 0x06,                // Usage (Keyboard)
-    0xA1, 0x01,                // Collection (Application)
-    0x85, REPORT_ID_KEYBOARD,  // Report ID (1)
-    0x05, 0x07,                // Usage Page (Keyboard)
-    0x19, 0xE0,                // Usage Minimum (Keyboard Left Control)
-    0x29, 0xE7,                // Usage Maximum (Keyboard Right GUI)
-    0x15, 0x00,                // Logical Minimum (0)
-    0x25, 0x01,                // Logical Maximum (1)
-    0x75, 0x01,                // Report Size (1)
-    0x95, 0x08,                // Report Count (8)
-    0x81, 0x02,                // Input (Data,Var,Abs)
-    0x95, 0x01,                // Report Count (1)
-    0x75, 0x08,                // Report Size (8)
-    0x81, 0x01,                // Input (Const,Array,Abs)
-    0x95, 0x06,                // Report Count (6)
-    0x75, 0x08,                // Report Size (8)
-    0x15, 0x00,                // Logical Minimum (0)
-    0x25, 0xFF,                // Logical Maximum (255)
-    0x05, 0x07,                // Usage Page (Keyboard)
-    0x19, 0x00,                // Usage Minimum (0)
-    0x29, 0xFF,                // Usage Maximum (255)
-    0x81, 0x00,                // Input (Data,Array,Abs)
-    0xC0,                      // End Collection
-
-    // Mouse
-    0x05, 0x01,             // Usage Page (Generic Desktop)
-    0x09, 0x02,             // Usage (Mouse)
-    0xA1, 0x01,             // Collection (Application)
-    0x85, REPORT_ID_MOUSE,  // Report ID (2)
-    0x09, 0x01,             // Usage (Pointer)
-    0xA1, 0x00,             // Collection (Physical)
-    0x05, 0x09,             // Usage Page (Button)
-    0x19, 0x01,             // Usage Minimum (Button 1)
-    0x29, 0x05,             // Usage Maximum (Button 5)
-    0x15, 0x00,             // Logical Minimum (0)
-    0x25, 0x01,             // Logical Maximum (1)
-    0x95, 0x05,             // Report Count (5)
-    0x75, 0x01,             // Report Size (1)
-    0x81, 0x02,             // Input (Data,Var,Abs)
-    0x95, 0x01,             // Report Count (1)
-    0x75, 0x03,             // Report Size (3)
-    0x81, 0x01,             // Input (Const,Array,Abs)
-    0x05, 0x01,             // Usage Page (Generic Desktop)
-    0x09, 0x30,             // Usage (X)
-    0x09, 0x31,             // Usage (Y)
-    0x09, 0x38,             // Usage (Wheel)
-    0x15, 0x81,             // Logical Minimum (-127)
-    0x25, 0x7F,             // Logical Maximum (127)
-    0x75, 0x08,             // Report Size (8)
-    0x95, 0x03,             // Report Count (3)
-    0x81, 0x06,             // Input (Data,Var,Rel)
-    0xC0,                   // End Collection
-    0xC0,                   // End Collection
-
-    // Consumer Control (Media Keys)
-    0x05, 0x0C,                // Usage Page (Consumer)
-    0x09, 0x01,                // Usage (Consumer Control)
-    0xA1, 0x01,                // Collection (Application)
-    0x85, REPORT_ID_CONSUMER,  // Report ID (3)
-    0x15, 0x00,                // Logical Minimum (0)
-    0x25, 0x01,                // Logical Maximum (1)
-    0x75, 0x01,                // Report Size (1)
-    0x95, 0x10,                // Report Count (16)
-    0x09, 0xB5,                // Usage (Scan Next Track)
-    0x09, 0xB6,                // Usage (Scan Previous Track)
-    0x09, 0xB7,                // Usage (Stop)
-    0x09, 0xB8,                // Usage (Eject)
-    0x09, 0xCD,                // Usage (Play/Pause)
-    0x09, 0xE2,                // Usage (Mute)
-    0x09, 0xE9,                // Usage (Volume Increment)
-    0x09, 0xEA,                // Usage (Volume Decrement)
-    0x0A, 0x23, 0x02,          // Usage (AC Home)
-    0x0A, 0x24, 0x02,          // Usage (AC Back)
-    0x0A, 0x21, 0x02,          // Usage (AC Search)
-    0x09, 0x40,                // Usage (Menu)
-    0x09, 0x30,                // Usage (Power)
-    0x09, 0x32,                // Usage (Sleep)
-    0x09, 0x34,                // Usage (Stand-by)
-    0x09, 0x65,                // Usage (App Control Menu)
-    0x81, 0x02,                // Input (Data,Var,Abs)
-    0xC0                       // End Collection
-};
-
-// Report structures
-typedef struct {
-    uint8_t modifier;
-    uint8_t reserved;
-    uint8_t keycode[6];
-} keyboard_report_t;
-
-typedef struct {
-    uint8_t buttons;
-    int8_t  x;
-    int8_t  y;
-    int8_t  wheel;
-} mouse_report_t;
-
-typedef struct {
-    uint16_t usage_id;
-} consumer_report_t;
+    TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(REPORT_ID_KEYBOARD)),
+    TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID(REPORT_ID_MOUSE)),
+    TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(REPORT_ID_CONSUMER))};
 
 // Current reports
-static keyboard_report_t keyboard_report = {0};
-static mouse_report_t    mouse_report    = {0};
+static hid_keyboard_report_t keyboard_report = {0};
+static hid_mouse_report_t    mouse_report    = {0};
 
-// TinyUSB callbacks
+// Configuration descriptor
+static const uint8_t hid_configuration_descriptor[] = {
+    // Configuration number, interface count, string index, total length, attribute, power in mA
+    TUD_CONFIG_DESCRIPTOR(1, 1, 0, TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN, 0, 100),
+
+    // Interface number, string index, protocol, report descriptor len, EP In address, size &
+    // polling interval
+    TUD_HID_DESCRIPTOR(0, 0, false, sizeof(hid_report_descriptor), 0x81, 16, 10),
+};
+
+// Invoked when device is mounted
 void tud_mount_cb(void)
 {
     ESP_LOGI(TAG, "USB mounted");
     usb_connected = true;
 }
 
+// Invoked when device is unmounted
 void tud_umount_cb(void)
 {
     ESP_LOGI(TAG, "USB unmounted");
     usb_connected = false;
 }
 
+// Invoked when usb bus is suspended
 void tud_suspend_cb(bool remote_wakeup_en)
 {
     (void) remote_wakeup_en;
     ESP_LOGI(TAG, "USB suspended");
-    usb_connected = false;
 }
 
+// Invoked when usb bus is resumed
 void tud_resume_cb(void)
 {
     ESP_LOGI(TAG, "USB resumed");
-    usb_connected = true;
 }
 
-// Get HID report descriptor
+// Invoked to get HID report descriptor
 uint8_t const *tud_hid_descriptor_report_cb(uint8_t itf)
 {
     (void) itf;
     return hid_report_descriptor;
 }
 
-// HID Get Report callback
+// Invoked when received GET_REPORT control request
 uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type,
                                uint8_t *buffer, uint16_t reqlen)
 {
     (void) itf;
+    (void) report_type;
     (void) reqlen;
-    if (report_type != HID_REPORT_TYPE_INPUT) {
-        return 0;
-    }
 
     switch (report_id) {
         case REPORT_ID_KEYBOARD:
             memcpy(buffer, &keyboard_report, sizeof(keyboard_report));
             return sizeof(keyboard_report);
+
         case REPORT_ID_MOUSE:
             memcpy(buffer, &mouse_report, sizeof(mouse_report));
             return sizeof(mouse_report);
+
         default:
             return 0;
     }
 }
 
-// HID Set Report callback (for LEDs, etc.)
+// Invoked when received SET_REPORT control request
 void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type,
                            uint8_t const *buffer, uint16_t bufsize)
 {
@@ -1281,54 +1156,20 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t rep
     (void) report_type;
     (void) buffer;
     (void) bufsize;
-    // Handle LED indicators or other output reports if needed
 }
 
-// Send keyboard report
-static void send_keyboard_report(void)
+// USB task
+static void usb_device_task(void *arg)
 {
-    if (usb_connected && tud_hid_ready()) {
-        uint8_t report[9];
-        report[0] = REPORT_ID_KEYBOARD;
-        memcpy(&report[1], &keyboard_report, sizeof(keyboard_report));
-        tud_hid_report(0, report, sizeof(report));
-    }
-}
+    (void) arg;
 
-// Send mouse report
-static void send_mouse_report(void)
-{
-    if (usb_connected && tud_hid_ready()) {
-        uint8_t report[5];
-        report[0] = REPORT_ID_MOUSE;
-        memcpy(&report[1], &mouse_report, sizeof(mouse_report));
-        tud_hid_report(0, report, sizeof(report));
-    }
-}
-
-// Send consumer report
-static void send_consumer_report(uint16_t usage_id)
-{
-    if (usb_connected && tud_hid_ready()) {
-        uint8_t report[3];
-        report[0] = REPORT_ID_CONSUMER;
-        report[1] = usage_id & 0xFF;
-        report[2] = (usage_id >> 8) & 0xFF;
-        tud_hid_report(0, report, sizeof(report));
-    }
-}
-
-// USB task to handle TinyUSB events
-static void usb_device_task(void *param)
-{
-    (void) param;
     while (1) {
         tud_task();
         vTaskDelay(pdMS_TO_TICKS(1));
     }
 }
 
-// Public functions implementation
+// Initialize USB HID
 void usb_hid_device_init(void)
 {
     ESP_LOGI(TAG, "Initializing USB HID device");
@@ -1336,48 +1177,85 @@ void usb_hid_device_init(void)
     // Create mutex
     hid_mutex = xSemaphoreCreateMutex();
 
-    // Initialize TinyUSB
-    const tinyusb_config_t tusb_cfg = {
-        .device_descriptor        = NULL,  // Use default descriptor
-        .string_descriptor        = NULL,
+    // Configure USB descriptors
+    static tusb_desc_device_t descriptor = {.bLength            = sizeof(descriptor),
+                                            .bDescriptorType    = TUSB_DESC_DEVICE,
+                                            .bcdUSB             = 0x0200,
+                                            .bDeviceClass       = 0,
+                                            .bDeviceSubClass    = 0,
+                                            .bDeviceProtocol    = 0,
+                                            .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
+                                            .idVendor           = 0x303A,  // Espressif VID
+                                            .idProduct          = 0x4002,
+                                            .bcdDevice          = 0x0100,
+                                            .iManufacturer      = 0x01,
+                                            .iProduct           = 0x02,
+                                            .iSerialNumber      = 0x03,
+                                            .bNumConfigurations = 0x01};
+
+    // Определите языковой дескриптор отдельно
+    static const char language_descriptor[] = {0x09, 0x04};
+
+    // Теперь используйте его в массиве
+    static const char *string_descriptor[] = {
+        language_descriptor,  // Language
+        "BMW",                // Manufacturer
+        "iDrive Controller",  // Product
+        "123456",             // Serial
+        "HID Interface",      // Interface
+    };
+
+    tinyusb_config_t tusb_cfg = {
+        .device_descriptor        = &descriptor,
+        .string_descriptor        = string_descriptor,
+        .string_descriptor_count  = sizeof(string_descriptor) / sizeof(string_descriptor[0]),
         .external_phy             = false,
-        .configuration_descriptor = NULL,
+        .configuration_descriptor = hid_configuration_descriptor,
     };
 
     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
 
-    // Create USB device task
-    xTaskCreate(usb_device_task, "usb_device_task", 4096, NULL, 5, NULL);
+    // Create USB task
+    xTaskCreate(usb_device_task, "TinyUSB", 4096, NULL, 5, NULL);
 
-    ESP_LOGI(TAG, "USB HID device initialized");
+    ESP_LOGI(TAG, "USB HID initialized");
 }
 
+// Keyboard functions
 void usb_hid_keyboard_press(uint8_t keycode)
 {
+    if (!usb_connected)
+        return;
+
     if (xSemaphoreTake(hid_mutex, portMAX_DELAY) == pdTRUE) {
-        // Find empty slot in keycode array
+        // Find empty slot
         for (int i = 0; i < 6; i++) {
             if (keyboard_report.keycode[i] == 0) {
                 keyboard_report.keycode[i] = keycode;
                 break;
             }
         }
-        send_keyboard_report();
+
+        tud_hid_n_report(0, REPORT_ID_KEYBOARD, &keyboard_report, sizeof(keyboard_report));
         xSemaphoreGive(hid_mutex);
     }
 }
 
 void usb_hid_keyboard_release(uint8_t keycode)
 {
+    if (!usb_connected)
+        return;
+
     if (xSemaphoreTake(hid_mutex, portMAX_DELAY) == pdTRUE) {
-        // Remove keycode from array
+        // Remove keycode
         for (int i = 0; i < 6; i++) {
             if (keyboard_report.keycode[i] == keycode) {
                 keyboard_report.keycode[i] = 0;
                 break;
             }
         }
-        send_keyboard_report();
+
+        tud_hid_n_report(0, REPORT_ID_KEYBOARD, &keyboard_report, sizeof(keyboard_report));
         xSemaphoreGive(hid_mutex);
     }
 }
@@ -1389,15 +1267,23 @@ void usb_hid_keyboard_press_and_release(uint8_t keycode)
     usb_hid_keyboard_release(keycode);
 }
 
+// Media key functions
 void usb_hid_media_key_press(uint8_t keycode)
 {
-    send_consumer_report(keycode);
+    if (!usb_connected)
+        return;
+
+    uint16_t usage = keycode;
+    tud_hid_n_report(0, REPORT_ID_CONSUMER, &usage, 2);
 }
 
 void usb_hid_media_key_release(uint8_t keycode)
 {
-    (void) keycode;
-    send_consumer_report(0);  // Release all consumer keys
+    if (!usb_connected)
+        return;
+
+    uint16_t usage = 0;
+    tud_hid_n_report(0, REPORT_ID_CONSUMER, &usage, 2);
 }
 
 void usb_hid_media_key_press_and_release(uint8_t keycode)
@@ -1407,12 +1293,16 @@ void usb_hid_media_key_press_and_release(uint8_t keycode)
     usb_hid_media_key_release(keycode);
 }
 
+// Mouse functions
 void usb_hid_mouse_move(int8_t x, int8_t y)
 {
+    if (!usb_connected)
+        return;
+
     if (xSemaphoreTake(hid_mutex, portMAX_DELAY) == pdTRUE) {
         mouse_report.x = x;
         mouse_report.y = y;
-        send_mouse_report();
+        tud_hid_n_report(0, REPORT_ID_MOUSE, &mouse_report, sizeof(mouse_report));
         mouse_report.x = 0;
         mouse_report.y = 0;
         xSemaphoreGive(hid_mutex);
@@ -1421,18 +1311,24 @@ void usb_hid_mouse_move(int8_t x, int8_t y)
 
 void usb_hid_mouse_button_press(uint8_t button)
 {
+    if (!usb_connected)
+        return;
+
     if (xSemaphoreTake(hid_mutex, portMAX_DELAY) == pdTRUE) {
         mouse_report.buttons |= button;
-        send_mouse_report();
+        tud_hid_n_report(0, REPORT_ID_MOUSE, &mouse_report, sizeof(mouse_report));
         xSemaphoreGive(hid_mutex);
     }
 }
 
 void usb_hid_mouse_button_release(uint8_t button)
 {
+    if (!usb_connected)
+        return;
+
     if (xSemaphoreTake(hid_mutex, portMAX_DELAY) == pdTRUE) {
         mouse_report.buttons &= ~button;
-        send_mouse_report();
+        tud_hid_n_report(0, REPORT_ID_MOUSE, &mouse_report, sizeof(mouse_report));
         xSemaphoreGive(hid_mutex);
     }
 }
@@ -1446,9 +1342,12 @@ void usb_hid_mouse_click(uint8_t button)
 
 void usb_hid_mouse_scroll(int8_t wheel)
 {
+    if (!usb_connected)
+        return;
+
     if (xSemaphoreTake(hid_mutex, portMAX_DELAY) == pdTRUE) {
         mouse_report.wheel = wheel;
-        send_mouse_report();
+        tud_hid_n_report(0, REPORT_ID_MOUSE, &mouse_report, sizeof(mouse_report));
         mouse_report.wheel = 0;
         xSemaphoreGive(hid_mutex);
     }
@@ -1456,7 +1355,7 @@ void usb_hid_mouse_scroll(int8_t wheel)
 
 bool usb_hid_is_connected(void)
 {
-    return usb_connected;
+    return usb_connected && tud_ready();
 }
 
 --- src\variables.cpp ---

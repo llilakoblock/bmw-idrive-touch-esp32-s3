@@ -6,18 +6,19 @@ import argparse
 
 # Directories we generally want to skip in a CMake C/C++ project
 EXCLUDED_DIRECTORIES = {
-    'build',
-    'bin',
-    '.git',
-    'out',
-    'logs',
-    'CMakeFiles',  # CMake's build-related directory
-    '.vscode',
-    '.idea',
-    '.clangd',
-    'debug',
-    'release',
-    '.pio',
+    "build",
+    "bin",
+    ".git",
+    "out",
+    "logs",
+    "CMakeFiles",  # CMake's build-related directory
+    ".vscode",
+    ".idea",
+    ".clangd",
+    "debug",
+    "release",
+    ".pio",
+    "managed_components",
 }
 
 # Common text-based file extensions for CMake, C, and C++ projects
