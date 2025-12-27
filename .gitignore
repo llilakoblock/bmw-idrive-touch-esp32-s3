@@ -9,6 +9,7 @@ compile_commands.json
 # ESP-IDF
 build/
 managed_components/
+dependencies.lock
 sdkconfig
 sdkconfig.old
 *.pyc
