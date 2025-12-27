@@ -15,7 +15,7 @@ sdkconfig.old
 __pycache__/
 
 # VSCode
-.vscode/
+.vscode
 *.code-workspace
 
 # Build artifacts
