@@ -1,98 +1,127 @@
-#ifndef SETTINGS_H
-#define SETTINGS_H
+// Copyright 2024 BMW iDrive ESP32-S3 Project
+// SPDX-License-Identifier: MIT
+//
+// Configuration settings for iDrive controller adapter.
 
-/*=========================================================================*/
-/*  Board & Feature Settings                                               */
-/*=========================================================================*/
+#ifndef BMW_IDRIVE_ESP32_SETTINGS_H_
+#define BMW_IDRIVE_ESP32_SETTINGS_H_
 
-#define ANDROID  // Android mode enabled - uses Android-specific media keys
+// =============================================================================
+// Feature Flags
+// =============================================================================
 
-// iDrive Joystick can be used as arrow keys or as mouse
-#define iDriveJoystickAsMouse  // Enable for mouse mode, comment out for arrow keys
+// Enable Android-specific media key mappings.
+#define ANDROID
 
-#define MOUSE_V1  // Touchpad data format version
+// Joystick mode: define for mouse cursor, comment out for arrow keys.
+#define IDRIVE_JOYSTICK_AS_MOUSE
+
+// Touchpad data format version.
+#define MOUSE_V1
 // #define MOUSE_V2
 
-/*=========================================================================*/
-/*  iDrive Timing & Behavior                                               */
-/*=========================================================================*/
+// =============================================================================
+// Timing Configuration (milliseconds)
+// =============================================================================
 
-const long iDrivePollTime          = 500;    // ms - how often to poll iDrive
-const long iDriveInitLightTime     = 1000;   // ms - light on during init
-const long iDriveLightTime         = 10000;  // ms - light keepalive interval
-const long controllerCoolDown      = 750;    // ms - wait before ready
-const int  TouchpadInitIgnoreCount = 2;      // Ignore first N touchpad messages
-const int  min_mouse_travel        = 5;      // Minimum movement threshold
+// Interval between iDrive poll messages.
+constexpr long kPollIntervalMs = 500;
 
-#define JOYSTICK_MOVE_STEP 30  // Mouse movement step for joystick
+// Duration of light-on state during initialization.
+constexpr long kLightInitDurationMs = 1000;
 
+// Interval between light keepalive messages.
+constexpr long kLightKeepaliveIntervalMs = 10000;
+
+// Cooldown period before controller is marked ready.
+constexpr long kControllerCooldownMs = 750;
+
+// Number of initial touchpad messages to ignore during init.
+constexpr int kTouchpadInitIgnoreCount = 0;
+
+// Minimum touchpad movement to register as input (deadzone).
+constexpr int kMinMouseTravel = 5;
+
+// Mouse movement step size for joystick input.
+constexpr int kJoystickMoveStep = 30;
+
+// =============================================================================
+// Button Mapping Documentation
+// =============================================================================
+//
 // Android-specific button mappings:
-// MENU button -> Android Menu
-// BACK button -> Android Back
-// OPTION button -> Play/Pause
-// RADIO button -> Previous track
-// CD button -> Next track
-// NAV button -> Android Home
-// TEL button -> Android Search
-// Rotary knob -> Volume up/down
-// Touchpad -> Mouse cursor
-// Joystick center -> Mouse click (or Enter key)
+//   MENU button   -> Android Menu
+//   BACK button   -> Android Back
+//   OPTION button -> Media Play/Pause
+//   RADIO button  -> Media Previous Track
+//   CD button     -> Media Next Track
+//   NAV button    -> Android Home
+//   TEL button    -> Android Search
+//   Rotary knob   -> Volume Up/Down
+//   Touchpad      -> Mouse cursor movement
+//   Joystick      -> Mouse movement or Arrow keys (configurable)
+//   Center press  -> Mouse click or Enter key
 
-/*=========================================================================*/
-/*  USB Device Settings                                                    */
-/*=========================================================================*/
+// =============================================================================
+// USB Device Configuration
+// =============================================================================
 
-// USB descriptors - these will appear in Android device manager
-#define USB_VENDOR_ID    0x1234  // Change to your vendor ID if you have one
-#define USB_PRODUCT_ID   0x5678  // Change to your product ID
+// USB Vendor ID (Espressif default).
+constexpr uint16_t kUsbVendorId = 0x303A;
+
+// USB Product ID.
+constexpr uint16_t kUsbProductId = 0x4002;
+
+// USB device strings.
 #define USB_MANUFACTURER "BMW"
 #define USB_PRODUCT      "iDrive Controller"
 #define USB_SERIAL_NUM   "123456"
 
-/*=========================================================================*/
-/*  Mouse/Touchpad Sensitivity                                             */
-/*=========================================================================*/
+// =============================================================================
+// Debug Configuration
+// =============================================================================
 
-// V1 touchpad settings (8-bit signed coordinates)
-const int8_t mouse_low_range    = -128;
-const int8_t mouse_high_range   = 127;
-const int8_t mouse_center_range = 0;
-const float  powerValue         = 1.4;
-
-// V2 touchpad settings (16-bit unsigned coordinates)
-const int mouse_low_range_v2    = 0;
-const int mouse_high_range_v2   = 510;
-const int mouse_center_range_v2 = mouse_high_range_v2 / 2;
-
-// Sensitivity multipliers - adjust these for your preference
-const int x_multiplier = 15;  // Horizontal sensitivity (higher = faster)
-const int y_multiplier = 15;  // Vertical sensitivity (higher = faster)
-
-/*=========================================================================*/
-/*  Debugging                                                              */
-/*=========================================================================*/
-
+// Enable serial debug output.
 #define SERIAL_DEBUG
-#define DEBUG_CanResponse
-// #define DEBUG_Keys
-// #define DEBUG_TouchPad
-// #define DEBUG_SpecificCanID
-// #define DEBUG_ID 0xBF
 
-// CAN IDs to ignore in debug output (reduces log spam)
-// Defined in idrive.cpp
-extern int ignored_responses[];
+// Enable CAN response logging.
+#define DEBUG_CAN_RESPONSE
 
-/*=========================================================================*/
-/*  Light Control                                                          */
-/*=========================================================================*/
+// Enable key press logging.
+#define DEBUG_KEYS
 
-// Which button turns off the backlight (set to 0 to disable)
-#define LIGHT_OFF_BUTTON MSG_INPUT_BUTTON_OPTION
+// Enable touchpad data logging.
+#define DEBUG_TOUCHPAD
 
-// Auto-dim settings
-#define AUTO_DIM_ENABLED    1
-#define AUTO_DIM_TIMEOUT    30000  // ms - dim after 30 seconds of inactivity
-#define AUTO_DIM_BRIGHTNESS 50     // % - dimmed brightness level
+// Enable logging for specific CAN ID.
+#define DEBUG_SPECIFIC_CAN_ID
+#define DEBUG_CAN_ID 0xBF
 
-#endif  // SETTINGS_H
+// CAN IDs to ignore in debug output are defined locally in idrive.cpp.
+
+// =============================================================================
+// Light Control Configuration
+// =============================================================================
+
+// Button that toggles backlight off (0 to disable).
+#define LIGHT_OFF_BUTTON kButtonOption
+
+// Auto-dim feature.
+constexpr bool kAutoDimEnabled    = true;
+constexpr long kAutoDimTimeoutMs  = 30000;  // Dim after 30 seconds of inactivity
+constexpr int  kAutoDimBrightness = 50;     // Dimmed brightness percentage
+
+// =============================================================================
+// Legacy Compatibility Macros
+// =============================================================================
+
+#define iDriveJoystickAsMouse
+#define iDrivePollTime          kPollIntervalMs
+#define iDriveInitLightTime     kLightInitDurationMs
+#define iDriveLightTime         kLightKeepaliveIntervalMs
+#define controllerCoolDown      kControllerCooldownMs
+#define TouchpadInitIgnoreCount kTouchpadInitIgnoreCount
+#define min_mouse_travel        kMinMouseTravel
+#define JOYSTICK_MOVE_STEP      kJoystickMoveStep
+
+#endif  // BMW_IDRIVE_ESP32_SETTINGS_H_

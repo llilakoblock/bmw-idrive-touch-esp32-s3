@@ -1,58 +1,127 @@
-#ifndef KEYASSIGNMENTS_H
-#define KEYASSIGNMENTS_H
+// Copyright 2024 BMW iDrive ESP32-S3 Project
+// SPDX-License-Identifier: MIT
+//
+// HID keyboard and mouse key code definitions.
 
-#define HID_KEY_A 0x04
-#define HID_KEY_B 0x05
-#define HID_KEY_C 0x06
-#define HID_KEY_D 0x07
-#define HID_KEY_E 0x08
-#define HID_KEY_F 0x09
-#define HID_KEY_M 0x10
-#define HID_KEY_N 0x11
-#define HID_KEY_O 0x12
-#define HID_KEY_R 0x15
-#define HID_KEY_S 0x16
-#define HID_KEY_T 0x17
-#define HID_KEY_U 0x18
-#define HID_KEY_DD 0x07  // 'd' repeated from above
-#define HID_KEY_L 0x0F
-#define HID_KEY_ENTER 0x28
-#define HID_KEY_ESC 0x29
-#define HID_KEY_BSPACE 0x2A
-#define HID_KEY_LEFT_ARROW 0x50
-#define HID_KEY_RIGHT_ARROW 0x4F
-#define HID_KEY_UP_ARROW 0x52
-#define HID_KEY_DOWN_ARROW 0x51
-#define HID_KEY_VOLUP 0x80    // or Consumer usage
-#define HID_KEY_VOLDOWN 0x81  // or Consumer usage
+#ifndef BMW_IDRIVE_ESP32_KEY_ASSIGNMENTS_H_
+#define BMW_IDRIVE_ESP32_KEY_ASSIGNMENTS_H_
 
-/*=========================================================================*/
-/*           Here are the symbolic names used by decodeCanBus              */
-/*=========================================================================*/
+#include <cstdint>
 
-// For iDrive Buttons
-#define KEY_MENU_KB HID_KEY_M
-#define KEY_BACK_KB HID_KEY_B
-#define KEY_OPTION_KB HID_KEY_O
-#define KEY_RADIO_KB HID_KEY_R
-#define KEY_CD_KB HID_KEY_C
-#define KEY_NAV_KB HID_KEY_N
-#define KEY_TEL_KB HID_KEY_T
+// =============================================================================
+// Standard Keyboard Key Codes (USB HID Usage Table)
+// =============================================================================
 
-// Joystick movements
-#define KEY_CENTER_KB HID_KEY_S
-#define KEY_UP_KB HID_KEY_U
-#define KEY_DOWN_KB HID_KEY_D  // or HID_KEY_DD
-#define KEY_LEFT_KB HID_KEY_L
-#define KEY_RIGHT_KB HID_KEY_R  // But conflict with 'r'?
+constexpr uint8_t kHidKeyA     = 0x04;
+constexpr uint8_t kHidKeyB     = 0x05;
+constexpr uint8_t kHidKeyC     = 0x06;
+constexpr uint8_t kHidKeyD     = 0x07;
+constexpr uint8_t kHidKeyE     = 0x08;
+constexpr uint8_t kHidKeyF     = 0x09;
+constexpr uint8_t kHidKeyL     = 0x0F;
+constexpr uint8_t kHidKeyM     = 0x10;
+constexpr uint8_t kHidKeyN     = 0x11;
+constexpr uint8_t kHidKeyO     = 0x12;
+constexpr uint8_t kHidKeyR     = 0x15;
+constexpr uint8_t kHidKeyS     = 0x16;
+constexpr uint8_t kHidKeyT     = 0x17;
+constexpr uint8_t kHidKeyU     = 0x18;
 
-// Rotations
-#define KEY_ROTATE_PLUS_KB HID_KEY_VOLUP
-#define KEY_ROTATE_MINUS_KB HID_KEY_VOLDOWN
+constexpr uint8_t kHidKeyEnter       = 0x28;
+constexpr uint8_t kHidKeyEscape      = 0x29;
+constexpr uint8_t kHidKeyBackspace   = 0x2A;
+constexpr uint8_t kHidKeyArrowRight  = 0x4F;
+constexpr uint8_t kHidKeyArrowLeft   = 0x50;
+constexpr uint8_t kHidKeyArrowDown   = 0x51;
+constexpr uint8_t kHidKeyArrowUp     = 0x52;
 
-// For mouse buttons, define if needed:
-#define MOUSE_BTN_LEFT 0x01
-#define MOUSE_BTN_RIGHT 0x02
-#define MOUSE_BTN_MIDDLE 0x04
+// Volume keys (Consumer Page).
+constexpr uint8_t kHidKeyVolumeUp   = 0x80;
+constexpr uint8_t kHidKeyVolumeDown = 0x81;
 
-#endif
+// =============================================================================
+// iDrive Button to Keyboard Key Mapping
+// =============================================================================
+
+constexpr uint8_t kKeyMenuKb   = kHidKeyM;
+constexpr uint8_t kKeyBackKb   = kHidKeyB;
+constexpr uint8_t kKeyOptionKb = kHidKeyO;
+constexpr uint8_t kKeyRadioKb  = kHidKeyR;
+constexpr uint8_t kKeyCdKb     = kHidKeyC;
+constexpr uint8_t kKeyNavKb    = kHidKeyN;
+constexpr uint8_t kKeyTelKb    = kHidKeyT;
+
+// =============================================================================
+// Joystick Direction to Keyboard Key Mapping
+// =============================================================================
+
+constexpr uint8_t kKeyCenterKb = kHidKeyS;
+constexpr uint8_t kKeyUpKb     = kHidKeyU;
+constexpr uint8_t kKeyDownKb   = kHidKeyD;
+constexpr uint8_t kKeyLeftKb   = kHidKeyL;
+constexpr uint8_t kKeyRightKb  = kHidKeyR;
+
+// =============================================================================
+// Rotary Encoder Key Mapping
+// =============================================================================
+
+constexpr uint8_t kKeyRotatePlusKb  = kHidKeyVolumeUp;
+constexpr uint8_t kKeyRotateMinusKb = kHidKeyVolumeDown;
+
+// =============================================================================
+// Mouse Button Definitions
+// =============================================================================
+
+constexpr uint8_t kMouseButtonLeft   = 0x01;
+constexpr uint8_t kMouseButtonRight  = 0x02;
+constexpr uint8_t kMouseButtonMiddle = 0x04;
+
+// =============================================================================
+// Legacy Macro Definitions (for compatibility)
+// =============================================================================
+
+#define HID_KEY_A           kHidKeyA
+#define HID_KEY_B           kHidKeyB
+#define HID_KEY_C           kHidKeyC
+#define HID_KEY_D           kHidKeyD
+#define HID_KEY_E           kHidKeyE
+#define HID_KEY_F           kHidKeyF
+#define HID_KEY_M           kHidKeyM
+#define HID_KEY_N           kHidKeyN
+#define HID_KEY_O           kHidKeyO
+#define HID_KEY_R           kHidKeyR
+#define HID_KEY_S           kHidKeyS
+#define HID_KEY_T           kHidKeyT
+#define HID_KEY_U           kHidKeyU
+#define HID_KEY_DD          kHidKeyD
+#define HID_KEY_L           kHidKeyL
+#define HID_KEY_ENTER       kHidKeyEnter
+#define HID_KEY_ESC         kHidKeyEscape
+#define HID_KEY_BSPACE      kHidKeyBackspace
+#define HID_KEY_LEFT_ARROW  kHidKeyArrowLeft
+#define HID_KEY_RIGHT_ARROW kHidKeyArrowRight
+#define HID_KEY_UP_ARROW    kHidKeyArrowUp
+#define HID_KEY_DOWN_ARROW  kHidKeyArrowDown
+#define HID_KEY_VOLUP       kHidKeyVolumeUp
+#define HID_KEY_VOLDOWN     kHidKeyVolumeDown
+
+#define KEY_MENU_KB         kKeyMenuKb
+#define KEY_BACK_KB         kKeyBackKb
+#define KEY_OPTION_KB       kKeyOptionKb
+#define KEY_RADIO_KB        kKeyRadioKb
+#define KEY_CD_KB           kKeyCdKb
+#define KEY_NAV_KB          kKeyNavKb
+#define KEY_TEL_KB          kKeyTelKb
+#define KEY_CENTER_KB       kKeyCenterKb
+#define KEY_UP_KB           kKeyUpKb
+#define KEY_DOWN_KB         kKeyDownKb
+#define KEY_LEFT_KB         kKeyLeftKb
+#define KEY_RIGHT_KB        kKeyRightKb
+#define KEY_ROTATE_PLUS_KB  kKeyRotatePlusKb
+#define KEY_ROTATE_MINUS_KB kKeyRotateMinusKb
+
+#define MOUSE_BTN_LEFT   kMouseButtonLeft
+#define MOUSE_BTN_RIGHT  kMouseButtonRight
+#define MOUSE_BTN_MIDDLE kMouseButtonMiddle
+
+#endif  // BMW_IDRIVE_ESP32_KEY_ASSIGNMENTS_H_
