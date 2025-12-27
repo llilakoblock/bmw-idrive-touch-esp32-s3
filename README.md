@@ -72,28 +72,28 @@ This adapter solves the problem by:
 
 ### Customizable Button Mapping
 
-All buttons can be remapped to any Android media key or keyboard key by editing `src/idrive.cpp`. Available HID codes are defined in `include/usb_hid_device.h`:
+All buttons can be remapped by editing `src/input/button_handler.cpp`. Available HID codes are defined in `include/hid/hid_keycodes.h`:
 
-**Android-specific keys:**
-- `HID_ANDROID_BACK` — Back navigation
-- `HID_ANDROID_HOME` — Home screen
-- `HID_ANDROID_MENU` — Menu key
-- `HID_ANDROID_SEARCH` — Search
+**Android-specific keys (namespace `idrive::hid::android`):**
+- `kBack` — Back navigation
+- `kHome` — Home screen
+- `kMenu` — Menu key
+- `kSearch` — Search
 
-**Media control keys:**
-- `HID_MEDIA_PLAY_PAUSE` — Play/Pause toggle
-- `HID_MEDIA_NEXT_TRACK` — Next track
-- `HID_MEDIA_PREV_TRACK` — Previous track
-- `HID_MEDIA_VOLUME_UP` — Volume up
-- `HID_MEDIA_VOLUME_DOWN` — Volume down
-- `HID_MEDIA_MUTE` — Mute toggle
-- `HID_MEDIA_STOP` — Stop playback
+**Media control keys (namespace `idrive::hid::media`):**
+- `kPlayPause` — Play/Pause toggle
+- `kNextTrack` — Next track
+- `kPrevTrack` — Previous track
+- `kVolumeUp` — Volume up
+- `kVolumeDown` — Volume down
+- `kMute` — Mute toggle
+- `kStop` — Stop playback
 
-**Standard keyboard keys:**
-- `HID_KEY_ENTER`, `HID_KEY_ESC`, `HID_KEY_TAB`, `HID_KEY_SPACE`
-- `HID_KEY_UP`, `HID_KEY_DOWN`, `HID_KEY_LEFT`, `HID_KEY_RIGHT`
-- `HID_KEY_A` through `HID_KEY_Z`, `HID_KEY_0` through `HID_KEY_9`
-- `HID_KEY_F1` through `HID_KEY_F12`
+**Standard keyboard keys (namespace `idrive::hid::key`):**
+- `kEnter`, `kEscape`, `kTab`, `kSpace`
+- `kUp`, `kDown`, `kLeft`, `kRight`
+- `kA` through `kZ`, `k0` through `k9`
+- `kF1` through `kF12`
 
 ## Hardware Requirements
 
@@ -334,64 +334,98 @@ Instead of a car head unit, use any Android smartphone or tablet with USB OTG su
 
 ## Software Architecture
 
+### Modern C++17 Design
+
+This project uses modern C++17 with object-oriented architecture:
+
+- **Classes** instead of global functions
+- **RAII** for automatic resource management (mutex, etc.)
+- **Dependency Injection** for testability
+- **Namespaces** (`idrive::`) for code organization
+- **Runtime configuration** instead of `#ifdef` preprocessor directives
+
 ### Project Structure
 
 ```
 bmw-idrive-touch-esp32-s3/
 ├── include/
-│   ├── idrive.h          # CAN protocol definitions and iDrive API
-│   ├── settings.h        # Configuration settings
-│   ├── variables.h       # Global state variables
-│   ├── key_assignments.h # HID key code definitions
-│   ├── usb_hid_device.h  # USB HID device API
-│   └── tusb_config.h     # TinyUSB configuration
+│   ├── can/
+│   │   └── can_bus.h              # CanBus class - CAN communication
+│   ├── config/
+│   │   └── config.h               # Configuration constants & runtime config
+│   ├── hid/
+│   │   ├── hid_keycodes.h         # USB HID key codes (keyboard, media, mouse)
+│   │   └── usb_hid_device.h       # UsbHidDevice class - USB HID interface
+│   ├── idrive/
+│   │   └── idrive_controller.h    # IDriveController class - main orchestrator
+│   ├── input/
+│   │   ├── input_handler.h        # InputHandler base class & InputEvent
+│   │   ├── button_handler.h       # ButtonHandler - media key mapping
+│   │   ├── joystick_handler.h     # JoystickHandler - mouse/arrows
+│   │   ├── rotary_handler.h       # RotaryHandler - volume control
+│   │   └── touchpad_handler.h     # TouchpadHandler - mouse cursor
+│   ├── utils/
+│   │   └── utils.h                # Utility functions (GetMillis, etc.)
+│   └── tusb_config.h              # TinyUSB configuration
 ├── src/
-│   ├── main.cpp          # Application entry point and main loop
-│   ├── idrive.cpp        # CAN message handling and input processing
-│   ├── usb_hid_device.c  # USB HID implementation
-│   └── variables.cpp     # Global variable definitions
-├── platformio.ini        # PlatformIO build configuration
-├── sdkconfig.defaults    # ESP-IDF SDK configuration
-└── README.md             # This file
+│   ├── main.cpp                   # Application entry point
+│   ├── can/
+│   │   └── can_bus.cpp            # CanBus implementation
+│   ├── hid/
+│   │   └── usb_hid_device.cpp     # UsbHidDevice implementation
+│   ├── idrive/
+│   │   └── idrive_controller.cpp  # IDriveController implementation
+│   ├── input/
+│   │   ├── button_handler.cpp
+│   │   ├── joystick_handler.cpp
+│   │   ├── rotary_handler.cpp
+│   │   └── touchpad_handler.cpp
+│   └── utils/
+│       └── utils.cpp
+├── platformio.ini
+├── sdkconfig.defaults
+└── README.md
 ```
 
-### Module Overview
+### Class Overview
 
-| Module | Purpose |
-|--------|---------|
-| **main.cpp** | Initializes hardware (USB, CAN), runs main loop, handles watchdog |
-| **idrive.cpp** | Decodes CAN messages, handles button/rotary/touchpad events, sends HID reports |
-| **usb_hid_device.c** | USB HID stack using TinyUSB, keyboard/mouse/media key functions |
-| **settings.h** | Timing configuration, feature flags, debug options |
-| **variables.h** | Shared state (init flags, positions, timing counters) |
+| Class | Responsibility |
+|-------|----------------|
+| **CanBus** | CAN bus communication via ESP32 TWAI driver |
+| **UsbHidDevice** | USB HID device with keyboard, mouse, media controls |
+| **IDriveController** | Main controller - orchestrates init, polling, event dispatch |
+| **ButtonHandler** | Maps iDrive buttons to Android/media keys |
+| **JoystickHandler** | Maps joystick to mouse movement or arrow keys |
+| **RotaryHandler** | Maps rotary encoder to volume up/down |
+| **TouchpadHandler** | Maps touchpad to mouse cursor movement |
 
 ### Data Flow
 
 ```
 ┌──────────────────┐    CAN Bus     ┌──────────────────┐
-│  iDrive          │    500kbps     │  ESP32-S3        │
-│  Controller      │ ─────────────► │  TWAI Driver     │
+│  iDrive          │    500kbps     │  CanBus          │
+│  Controller      │ ─────────────► │  (can_bus.cpp)   │
 └──────────────────┘                └────────┬─────────┘
-                                             │
+                                             │ callback
                                              ▼
                                     ┌──────────────────┐
-                                    │  DecodeCanMessage│
-                                    │  (idrive.cpp)    │
+                                    │ IDriveController │
+                                    │ OnCanMessage()   │
                                     └────────┬─────────┘
-                                             │
+                                             │ InputEvent
               ┌──────────────────────────────┼──────────────────────────────┐
               ▼                              ▼                              ▼
      ┌──────────────────┐         ┌──────────────────┐          ┌──────────────────┐
-     │  HandleButton    │         │  HandleRotary    │          │  HandleTouchpad  │
-     │  HandleJoystick  │         │  (Volume +/-)    │          │  (Mouse Move)    │
+     │  ButtonHandler   │         │  RotaryHandler   │          │  TouchpadHandler │
+     │  JoystickHandler │         │  (Volume +/-)    │          │  (Mouse Move)    │
      └────────┬─────────┘         └────────┬─────────┘          └────────┬─────────┘
               │                            │                             │
               └──────────────────────────────────────────────────────────┘
                                            │
                                            ▼
                                   ┌──────────────────┐
-                                  │  USB HID Device  │
-                                  │  (TinyUSB)       │
+                                  │  UsbHidDevice    │
+                                  │  (TinyUSB + RAII)│
                                   └────────┬─────────┘
                                            │
                                            ▼
@@ -399,6 +433,31 @@ bmw-idrive-touch-esp32-s3/
                                   │  Android         │
                                   │  Head Unit       │
                                   └──────────────────┘
+```
+
+### Key Code Patterns
+
+**Dependency Injection in main.cpp:**
+```cpp
+idrive::CanBus can(GPIO_NUM_4, GPIO_NUM_5);
+idrive::UsbHidDevice& hid = idrive::GetUsbHidDevice();
+idrive::Config config{ .joystick_as_mouse = true };
+idrive::IDriveController controller(can, hid, config);
+```
+
+**Input Handler Pattern:**
+```cpp
+class ButtonHandler : public InputHandler {
+    bool Handle(const InputEvent& event) override;
+};
+```
+
+**RAII Mutex in UsbHidDevice:**
+```cpp
+if (xSemaphoreTake(mutex_, portMAX_DELAY) == pdTRUE) {
+    // Thread-safe HID report
+    xSemaphoreGive(mutex_);
+}
 ```
 
 ### State Machine
@@ -556,26 +615,59 @@ idf.py monitor
 
 ## Configuration
 
-### settings.h Options
+All configuration is centralized in `include/config/config.h` using modern C++17 patterns.
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `IDRIVE_JOYSTICK_AS_MOUSE` | Joystick controls mouse instead of arrow keys | Enabled |
-| `kPollIntervalMs` | Polling interval | 500ms |
-| `kLightKeepaliveIntervalMs` | Light keepalive | 10000ms |
-| `kControllerCooldownMs` | Ready delay | 750ms |
-| `kMinMouseTravel` | Touch deadzone | 5 |
-| `kJoystickMoveStep` | Joystick mouse step | 30 |
+### Runtime Configuration (struct Config)
+
+Runtime settings that can be changed per-instance:
+
+| Field | Type | Description | Default |
+|-------|------|-------------|---------|
+| `joystick_as_mouse` | bool | Joystick controls mouse instead of arrow keys | `true` |
+| `light_brightness` | uint8_t | Backlight brightness (0-255) | `100` |
+| `poll_interval_ms` | uint32_t | Polling interval in ms | `500` |
+| `light_keepalive_ms` | uint32_t | Light keepalive interval in ms | `10000` |
+| `min_mouse_travel` | int | Touch deadzone threshold | `5` |
+| `joystick_move_step` | int | Joystick mouse step size | `30` |
+
+**Example usage in main.cpp:**
+```cpp
+idrive::Config config{
+    .joystick_as_mouse = true,
+    .light_brightness = 100,
+    .poll_interval_ms = 500,
+};
+idrive::IDriveController controller(can, hid, config);
+```
+
+### Compile-time Constants (namespace config)
+
+Constants in `idrive::config::` namespace:
+
+| Constant | Description | Default |
+|----------|-------------|---------|
+| `kCanBaudrate` | CAN bus speed | 500000 |
+| `kPollIntervalMs` | Default poll interval | 500 |
+| `kLightKeepaliveMs` | Light keepalive | 10000 |
+| `kControllerCooldownMs` | Ready delay after init | 750 |
+| `kMinMouseTravel` | Default touch deadzone | 5 |
+| `kJoystickMoveStep` | Default joystick step | 30 |
+| `kXMultiplier` / `kYMultiplier` | Touchpad sensitivity | 10 |
 
 ### Debug Options
 
-Enable in `settings.h`:
+Enable/disable in `include/config/config.h`:
+
 ```cpp
-#define SERIAL_DEBUG       // Serial output
-#define DEBUG_CAN_RESPONSE // Log CAN messages
-#define DEBUG_KEYS         // Log key events
-#define DEBUG_TOUCHPAD     // Log touchpad data
+namespace idrive::config {
+constexpr bool kSerialDebug = true;     // Serial output
+constexpr bool kDebugCan = false;       // Log CAN messages
+constexpr bool kDebugKeys = true;       // Log key events
+constexpr bool kDebugTouchpad = true;   // Log touchpad data
+}
 ```
+
+**Note:** Debug flags use `constexpr bool` instead of preprocessor `#define`. Set to `true` or `false` to enable/disable.
 
 ## Troubleshooting
 
