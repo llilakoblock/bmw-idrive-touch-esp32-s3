@@ -264,18 +264,22 @@ Position is 16-bit value that wraps around. Calculate delta from previous positi
 // Timing
 constexpr uint32_t kPollIntervalMs = 5;    // 200Hz for smooth mouse
 
-// Multipliers (for raw coordinates)
+// Multipliers (both X and Y: 0-511, 9-bit resolution)
 constexpr int kXMultiplier = 5;            // X: 512 steps
-constexpr int kYMultiplier = 30;           // Y: 32 steps (needs more amplification)
+constexpr int kYMultiplier = 5;            // Y: 512 steps (same as X!)
 constexpr int kMinMouseTravel = 1;         // 1 step threshold
 ```
 
 ### Mouse Movement Calculation
 
 ```cpp
-// Delta from raw coordinates
-int16_t delta_x = current_x - prev_x;
-int16_t delta_y = current_y - prev_y;
+// Decode coordinates (9-bit each, range 0-511)
+int16_t x = msg.data[1] + 256 * (msg.data[2] & 0x01);
+int16_t y = (msg.data[3] << 4) | (msg.data[2] >> 4);
+
+// Delta from previous position
+int16_t delta_x = x - prev_x;
+int16_t delta_y = y - prev_y;
 
 // Apply multipliers (Y inverted for screen coordinates)
 int8_t mouse_x = delta_x * kXMultiplier / 10;
@@ -292,7 +296,8 @@ int8_t mouse_y = -delta_y * kYMultiplier / 10;  // Inverted!
 | Touchpad RX ID | 0x0BF | 0x0BF |
 | Poll message | {0x21, ...} | **{0x10, ...}** |
 | Key bit | Unknown | **bit4 (0x10) enables coords** |
-| Y range | 0-30 (documented) | **0-31 (tested)** |
+| X range | 0-255 | **0-511 (9-bit)** |
+| Y range | 0-30 (documented) | **0-511 (9-bit)** |
 
 ---
 

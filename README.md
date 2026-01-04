@@ -79,10 +79,10 @@ This adapter solves the problem by:
 
 | Parameter | Value |
 |-----------|-------|
-| X Resolution | 512 steps (256 per half) |
-| Y Resolution | 32 steps |
+| X Resolution | 512 steps (9-bit) |
+| Y Resolution | 512 steps (9-bit) |
 | Poll Rate | 200 Hz (5ms) |
-| Multi-touch | Up to 4 fingers detected |
+| Multi-touch | Up to 2 fingers with coordinates |
 
 ## Hardware Requirements
 
@@ -275,7 +275,7 @@ Instead of a car head unit, use any Android smartphone or tablet with USB OTG su
 │                                                     │
 │            ┌─────────────────────┐                  │
 │            │      Touchpad       │                  │
-│            │   512x32 resolution │                  │
+│            │  512x512 resolution │                  │
 │            │   (Mouse Cursor)    │                  │
 │            └─────────────────────┘                  │
 │                                                     │
@@ -465,25 +465,22 @@ can.Send(0x317, data, 8);  // Send every 5ms for 200Hz polling
 ### Touchpad Response Format (0x0BF)
 
 ```
-Byte 0: Counter (increments each message)
-Byte 1: X coordinate raw (0-255 per half)
-Byte 2: Lower nibble = half indicator (0=left, 1=right)
-        Upper nibble = flags (unknown)
-Byte 3: Y coordinate raw (0-31)
-Byte 4: Touch type (0x10=touch, 0x11=removed, 0x00=multi-touch)
-Byte 5-7: Reserved
+Byte 0: Counter (low nibble cycles 0-F)
+Byte 1: Finger 1 X low byte (0-255)
+Byte 2: [high nibble = Y low 4 bits] [low nibble = X high bit (0/1)]
+Byte 3: Finger 1 Y high 5 bits (0-31)
+Byte 4: Touch state (0x10=1 finger, 0x11=removed, 0x00=2 fingers)
+Byte 5-7: Finger 2 data (same format as bytes 1-3)
 ```
 
-**Coordinate Processing (raw for maximum precision):**
+**Coordinate Processing (9-bit X and Y, range 0-511):**
 
 ```cpp
-// X: combine halves for 0-511 range
-uint8_t raw_x = msg.data[1];
-uint8_t x_lr = msg.data[2] & 0x0F;
-int16_t x = (x_lr == 1) ? (256 + raw_x) : raw_x;  // 0-511
+// X: 9-bit (byte1 + high bit from byte2)
+int16_t x = msg.data[1] + 256 * (msg.data[2] & 0x01);
 
-// Y: use raw (0-31)
-int16_t y = msg.data[3];
+// Y: 9-bit (byte3 << 4 | byte2 high nibble)
+int16_t y = (msg.data[3] << 4) | (msg.data[2] >> 4);
 ```
 
 ### Button Input Format (0x267)
@@ -567,9 +564,9 @@ constexpr uint32_t kControllerCooldownMs = 750; // Init delay
 ### Touchpad Sensitivity
 
 ```cpp
-// Raw coordinate multipliers (X: 0-511, Y: 0-31)
+// Raw coordinate multipliers (both X and Y: 0-511, 9-bit resolution)
 constexpr int kXMultiplier = 5;   // X delta * 5 / 10 = 0.5 px/step
-constexpr int kYMultiplier = 30;  // Y delta * 30 / 10 = 3 px/step
+constexpr int kYMultiplier = 5;   // Y delta * 5 / 10 = 0.5 px/step (same as X!)
 constexpr int kMinMouseTravel = 1; // Dead zone threshold
 ```
 
