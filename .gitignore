@@ -4,6 +4,7 @@
 .piolibdeps/
 .clang_complete
 .gcc-flags.json
+.claude
 compile_commands.json
 
 # ESP-IDF

@@ -62,7 +62,22 @@ void IDriveController::Update() {
     if (rotary_init_done_ && !touchpad_init_done_) {
         ESP_LOGI(kTag, "Rotary init done, initializing touchpad");
         SendTouchpadInit();
+        last_touchpad_init_time_ = now;
         touchpad_init_done_ = true;
+    }
+
+    // Keep sending touchpad init until we get a response on 0xBF.
+    if (touchpad_init_done_ && !touchpad_active_) {
+        constexpr uint32_t kTouchpadInitRetryMs = 50;
+        if (now - last_touchpad_init_time_ >= kTouchpadInitRetryMs) {
+            last_touchpad_init_time_ = now;
+            SendTouchpadInit();
+            // Log only every 20th attempt (~1 sec) to reduce spam.
+            static int retry_count = 0;
+            if (++retry_count % 20 == 0) {
+                ESP_LOGI(kTag, "Touchpad init retry #%d...", retry_count);
+            }
+        }
     }
 
     // Mark controller as ready after cooldown.
@@ -88,6 +103,9 @@ void IDriveController::Update() {
     if (now - last_poll_time_ >= config_.poll_interval_ms) {
         last_poll_time_ = now;
         SendPollCommand();
+        // G-series ZBE4 needs continuous touchpad polling.
+        // Always send - don't wait for touchpad_active_
+        SendTouchpadInit();
     }
 
     // Periodic light keepalive.
@@ -120,10 +138,11 @@ void IDriveController::SetLightEnabled(bool enabled) {
 
 void IDriveController::OnCanMessage(const CanMessage& msg) {
     // Log incoming messages for debugging.
-    ESP_LOGD(kTag, "RX <- ID: 0x%03lX, DLC:%d, Data: %02X %02X %02X %02X %02X %02X %02X %02X",
-             msg.id, msg.length,
-             msg.data[0], msg.data[1], msg.data[2], msg.data[3],
-             msg.data[4], msg.data[5], msg.data[6], msg.data[7]);
+    if (config::kDebugCan) {
+        ESP_LOGI(kTag, "RX <- ID: 0x%03lX, DLC:%d, Data: %02X %02X %02X %02X %02X %02X %02X %02X",
+                 msg.id, msg.length, msg.data[0], msg.data[1], msg.data[2], msg.data[3],
+                 msg.data[4], msg.data[5], msg.data[6], msg.data[7]);
+    }
 
     // Ignore our own transmitted messages (echo).
     if (msg.id == can_id::kRotaryInitCmd || msg.id == can_id::kLight ||
@@ -157,6 +176,10 @@ void IDriveController::HandleInputMessage(const CanMessage& msg) {
     uint8_t state = msg.data[3] & 0x0F;
     uint8_t input_type = msg.data[4];
     uint8_t input = msg.data[5];
+
+    if (config::kDebugKeys) {
+        ESP_LOGI(kTag, "Input: type=0x%02X, id=0x%02X, state=%d", input_type, input, state);
+    }
 
     InputEvent event;
 
@@ -227,9 +250,21 @@ void IDriveController::HandleRotaryMessage(const CanMessage& msg) {
 void IDriveController::HandleTouchpadMessage(const CanMessage& msg) {
     if (msg.length < 8) return;
 
-    ESP_LOGD(kTag, "Touchpad message received");
+    // Mark touchpad as active on first response.
+    if (!touchpad_active_) {
+        touchpad_active_ = true;
+        ESP_LOGI(kTag, "Touchpad active! (received 0xBF response)");
+    }
 
     uint8_t touch_type = msg.data[4];
+
+    // Only log when there's actual touch data (skip 0x11 = no finger)
+    if (config::kDebugTouchpad && touch_type != protocol::kTouchFingerRemoved) {
+        // Print raw CAN message for analysis
+        ESP_LOGI(kTag, "Touch RAW: [%02X %02X %02X %02X %02X %02X %02X %02X]",
+                 msg.data[0], msg.data[1], msg.data[2], msg.data[3],
+                 msg.data[4], msg.data[5], msg.data[6], msg.data[7]);
+    }
 
     // Ignore initial touchpad messages during initialization.
     if (touchpad_init_ignore_counter_ < config::kTouchpadInitIgnoreCount &&
@@ -250,25 +285,18 @@ void IDriveController::HandleTouchpadMessage(const CanMessage& msg) {
     }
 
     if (touch_type == protocol::kTouchSingle || touch_type == protocol::kTouchMulti) {
-        // Extract coordinates.
-        int16_t x = static_cast<int8_t>(msg.data[1]);
-        int16_t y = static_cast<int8_t>(msg.data[3]);
+        // Use RAW coordinates for maximum precision.
+        // X: combine half indicator with raw value to get 0-511 range.
+        // Left half (x_lr=0): 0-255, Right half (x_lr=1): 256-511.
+        uint8_t raw_x = msg.data[1];
         uint8_t x_lr = msg.data[2] & 0x0F;
+        int16_t combined_x = (x_lr == 1) ? (256 + raw_x) : raw_x;
 
-        // Convert coordinates.
-        if (x_lr == 0) {
-            // Left half: 0-255 -> -128 to 0.
-            x = utils::MapValue(static_cast<uint8_t>(msg.data[1]), 0, 255, -128, 0);
-        } else if (x_lr == 1) {
-            // Right half: 0-255 -> 0 to 127.
-            x = utils::MapValue(static_cast<uint8_t>(msg.data[1]), 0, 255, 0, 127);
-        }
+        // Y: use raw value directly (0-30 range).
+        int16_t raw_y = msg.data[3];
 
-        // Y coordinate mapping.
-        y = utils::MapValue(static_cast<uint8_t>(msg.data[3]), 0, 30, -128, 127);
-
-        event.x = x;
-        event.y = y;
+        event.x = combined_x;
+        event.y = raw_y;
         DispatchEvent(event);
     }
 }
@@ -291,6 +319,7 @@ void IDriveController::HandleStatusMessage(const CanMessage& msg) {
         rotary_init_done_ = false;
         light_init_done_ = false;
         touchpad_init_done_ = false;
+        touchpad_active_ = false;
         rotary_position_set_ = false;
         cooldown_start_time_ = 0;
         touchpad_init_ignore_counter_ = 0;
@@ -312,17 +341,19 @@ void IDriveController::SendRotaryInit() {
 }
 
 void IDriveController::SendTouchpadInit() {
-    uint8_t data[8] = {0x21, 0x00, 0x00, 0x00, 0x11, 0x00, 0x00, 0x00};
-    can_.Send(can_id::kTouch, data, 8);
-    ESP_LOGI(kTag, "Sent touchpad init frame");
+    // G-series ZBE4 touchpad poll message.
+    // byte[0] bit4 (0x10) must be SET for coordinates to update.
+    // Cycling is NOT required - fixed 0x10 works perfectly.
+    uint8_t data[8] = {0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    can_.Send(can_id::kTouchInitCmd, data, 8);
 }
 
 void IDriveController::SendLightCommand() {
-    uint8_t data[3];
-    data[0] = 0x02;
-    data[1] = light_enabled_ ? 0xFD : 0xFE;
-    data[2] = 0x00;
-    can_.Send(can_id::kLight, data, 3);
+    // Light ON: 0xFD 0x00, Light OFF: 0xFE 0x00 (as per original code)
+    uint8_t data[2];
+    data[0] = light_enabled_ ? 0xFD : 0xFE;
+    data[1] = 0x00;
+    can_.Send(can_id::kLight, data, 2);
 }
 
 void IDriveController::SendPollCommand() {

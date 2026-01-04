@@ -1,6 +1,8 @@
 # BMW iDrive Touch Controller for Android Head Unit
 
-> ESP32-S3 adapter that connects BMW iDrive Touch controller to Android head units via USB HID.
+> ESP32-S3 adapter that connects BMW G-series iDrive Touch controller (ZBE4) to Android head units via USB HID.
+
+**Status: FULLY WORKING** - All features operational including touchpad!
 
 **Disclaimer**: This project is not affiliated with or endorsed by BMW. It is intended for educational and experimental purposes only. Use in a vehicle is at your own risk.
 
@@ -21,7 +23,7 @@
 
 ## Overview
 
-This project enables you to use a genuine BMW iDrive Touch controller (from F-series and later vehicles) with aftermarket Android head units. The ESP32-S3 microcontroller acts as a bridge:
+This project enables you to use a genuine BMW iDrive Touch controller (G-series ZBE4) with aftermarket Android head units. The ESP32-S3 microcontroller acts as a bridge:
 
 1. **Reads** button presses, rotary encoder rotation, joystick movement, and touchpad gestures from the iDrive controller via CAN bus
 2. **Converts** these inputs into standard USB HID events (keyboard, mouse, and media controls)
@@ -55,45 +57,32 @@ This adapter solves the problem by:
 
 ## Features
 
-| Input | Function |
-|-------|----------|
-| **Rotary Encoder** | Volume Up/Down |
-| **Rotary Push** | Enter/Select |
-| **MENU Button** | Android Menu |
-| **BACK Button** | Android Back |
-| **NAV Button** | Android Home |
-| **TEL Button** | Android Search |
-| **OPTION Button** | Play/Pause |
-| **RADIO Button** | Previous Track |
-| **CD Button** | Next Track |
-| **Joystick** | Mouse movement or Arrow keys |
-| **Joystick Center** | Mouse click or Enter |
-| **Touchpad** | Mouse cursor movement |
+### What Works
 
-### Customizable Button Mapping
+| Input | Function | Status |
+|-------|----------|--------|
+| **Rotary Encoder** | Volume Up/Down | ✅ Working |
+| **Rotary Push** | Enter/Select | ✅ Working |
+| **MENU Button** | Android Menu | ✅ Working |
+| **BACK Button** | Android Back | ✅ Working |
+| **NAV Button** | Android Home | ✅ Working |
+| **TEL Button** | Android Search | ✅ Working |
+| **OPTION Button** | Play/Pause | ✅ Working |
+| **RADIO Button** | Previous Track | ✅ Working |
+| **CD Button** | Next Track | ✅ Working |
+| **Joystick** | Mouse movement / Arrow keys | ✅ Working |
+| **Joystick Center** | Mouse click / Enter | ✅ Working |
+| **Touchpad** | Mouse cursor movement | ✅ Working |
+| **Backlight** | Illumination control | ✅ Working |
 
-All buttons can be remapped by editing `src/input/button_handler.cpp`. Available HID codes are defined in `include/hid/hid_keycodes.h`:
+### Touchpad Specifications
 
-**Android-specific keys (namespace `idrive::hid::android`):**
-- `kBack` — Back navigation
-- `kHome` — Home screen
-- `kMenu` — Menu key
-- `kSearch` — Search
-
-**Media control keys (namespace `idrive::hid::media`):**
-- `kPlayPause` — Play/Pause toggle
-- `kNextTrack` — Next track
-- `kPrevTrack` — Previous track
-- `kVolumeUp` — Volume up
-- `kVolumeDown` — Volume down
-- `kMute` — Mute toggle
-- `kStop` — Stop playback
-
-**Standard keyboard keys (namespace `idrive::hid::key`):**
-- `kEnter`, `kEscape`, `kTab`, `kSpace`
-- `kUp`, `kDown`, `kLeft`, `kRight`
-- `kA` through `kZ`, `k0` through `k9`
-- `kF1` through `kF12`
+| Parameter | Value |
+|-----------|-------|
+| X Resolution | 512 steps (256 per half) |
+| Y Resolution | 32 steps |
+| Poll Rate | 200 Hz (5ms) |
+| Multi-touch | Up to 4 fingers detected |
 
 ## Hardware Requirements
 
@@ -103,34 +92,17 @@ All buttons can be remapped by editing `src/input/button_handler.cpp`. Available
 |-----------|-------------|
 | ESP32-S3 DevKit | Any ESP32-S3 board with USB OTG support |
 | CAN Transceiver | MCP2551, SN65HVD230, or similar 3.3V compatible |
-| BMW iDrive Controller | iDrive Touch controller (see compatibility below) |
+| BMW iDrive Controller | G-series ZBE4 (tested: 65826829079) |
 | Power Supply | 12V for iDrive, 5V for ESP32 |
 
 ### Tested Controller
 
-All development and testing was performed with:
-
 | Property | Value |
 |----------|-------|
 | **BMW Part Number** | 65826829079 |
-| **Compatible Models** | BMW 5' G30, F90 M5, G31, G38, 6' G32 GT |
-| **Controller Type** | iDrive Touch with ceramic surface |
-
-### Compatibility with Other Controllers
-
-This project should work with most **BMW iDrive Touch controllers** from F-series and G-series vehicles:
-
-| Generation | Models | Expected Compatibility |
-|------------|--------|------------------------|
-| F-series | F10, F20, F30, F25, F15, etc. | High - same protocol |
-| G-series | G30, G11, G01, G05, etc. | High - tested |
-| E-series | E60, E90, E70, etc. | Unknown - older protocol |
-
-**Note on CAN protocol differences:**
-- All iDrive Touch controllers share very similar external design with minimal visual differences
-- The CAN bus protocol is likely identical or nearly identical across all iDrive Touch variants
-- Minor differences (if any) may include different CAN message IDs or data byte positions
-- If your controller doesn't work, enable debug logging to capture CAN messages and compare with documented protocol
+| **Controller Type** | ZBE-06-TC (iDrive Touch with ceramic surface \ non ceramic) |
+| **Compatible controllers** | BMW 5' G30, F90 M5, G31, G38, 6' G32 GT |
+| **CAN Bus** | K-CAN4 at 500 kbps |
 
 ### Pin Connections
 
@@ -143,12 +115,12 @@ This project should work with most **BMW iDrive Touch controllers** from F-serie
 
 ## Wiring Diagram
 
-> **CRITICAL**: All ground connections (GND) MUST be connected together! CAN bus is a differential signal that requires a common ground reference between all devices. Without common ground, the CAN transceiver cannot properly interpret the voltage difference between CAN-H and CAN-L lines.
+> **CRITICAL**: All ground connections (GND) MUST be connected together!
 
 ```
                                          ┌─────────────────────┐
                                          │   BMW iDrive        │
-                                         │   Controller        │
+                                         │   ZBE4 Controller   │
                                          │                     │
                                          │ CAN-H CAN-L +12V GND│
                                          └──┬─────┬─────┬────┬─┘
@@ -157,44 +129,26 @@ This project should work with most **BMW iDrive Touch controllers** from F-serie
     │                                       │     │     │    │               │
     │  COMMON GROUND BUS (GND) ═══════════════════════════════════════════   │
     │    │         │              │         │     │     │    │           │   │
-    │    │         │              │         │     │     │    │           │   │
     │    │         │         ┌────┴─────────┴─────┴─────┴────┴───┐       │   │
-    │    │         │         │                                   │       │   │
     │    │         │         │       CAN Transceiver             │       │   │
     │    │         │         │       (MCP2551/SN65HVD230)        │       │   │
-    │    │         │         │                                   │       │   │
     │    │         │         │  RXD  TXD  VCC  GND  CAN-H  CAN-L │       │   │
     │    │         │         └───┬────┬────┬────┬────┬──────┬────┘       │   │
-    │    │         │             │    │    │    │    │      │            │   │
     │    │         │             │    │    │    ╧    │      │            │   │
-    │    │         │             │    │    │   GND   │      │            │   │
-    │    │         │             │    │    │         │      │            │   │
     │ ┌──┴─────────┴─────────────┴────┴────┴─────────┴──────┴────┐       │   │
-    │ │                                                          │       │   │
     │ │   ESP32-S3 DevKit                                        │       │   │
-    │ │                                                          │       │   │
     │ │   GPIO 4 ◄─── RXD                                        │       │   │
     │ │   GPIO 5 ───► TXD                                        │       │   │
     │ │   3.3V   ───► VCC (transceiver)                          │       │   │
-    │ │   GND    ═══════════════════════════════════════════════════════╧   │
-    │ │                                                          │           │
+    │ │   GND    ════════════════════════════════════════════════════════╧   │
     │ │   USB    ───────────────────────► To Android Head Unit   │           │
-    │ │                                                          │           │
     │ └──────────────────────────────────────────────────────────┘           │
-    │                                                                        │
     │                           ┌────────────────────┐                       │
     │                           │  12V Power Supply  │                       │
-    │                           │  (Vehicle/PSU)     │                       │
-    │                           │                    │                       │
     │                           │   +12V        GND  │                       │
     │                           └─────┬──────────┬───┘                       │
-    │                                 │          │                           │
-    │                                 │          ╧                           │
-    │                                 │    ══════╧═══════════════════════════╧
-    │                                 │         COMMON GND
-    │                                 │
-    │                                 └───────► To iDrive +12V
-    │                                                                        │
+    │                                 │          ╧═══════════════════════════╧
+    │                                 └───────► To iDrive +12V    COMMON GND │
     └────────────────────────────────────────────────────────────────────────┘
 
     ═══════ = Common Ground Bus (CRITICAL - must connect all GND together)
@@ -304,8 +258,6 @@ Instead of a car head unit, use any Android smartphone or tablet with USB OTG su
 
 ## Button Mapping
 
-### Default Android Mapping
-
 ```
 ┌─────────────────────────────────────────────────────┐
 │                                                     │
@@ -323,6 +275,7 @@ Instead of a car head unit, use any Android smartphone or tablet with USB OTG su
 │                                                     │
 │            ┌─────────────────────┐                  │
 │            │      Touchpad       │                  │
+│            │   512x32 resolution │                  │
 │            │   (Mouse Cursor)    │                  │
 │            └─────────────────────┘                  │
 │                                                     │
@@ -334,28 +287,18 @@ Instead of a car head unit, use any Android smartphone or tablet with USB OTG su
 
 ## Software Architecture
 
-### Modern C++17 Design
-
-This project uses modern C++17 with object-oriented architecture:
-
-- **Classes** instead of global functions
-- **RAII** for automatic resource management (mutex, etc.)
-- **Dependency Injection** for testability
-- **Namespaces** (`idrive::`) for code organization
-- **Runtime configuration** instead of `#ifdef` preprocessor directives
-
 ### Project Structure
 
 ```
 bmw-idrive-touch-esp32-s3/
 ├── include/
 │   ├── can/
-│   │   └── can_bus.h              # CanBus class - CAN communication
+│   │   └── can_bus.h              # CAN bus communication (TWAI driver)
 │   ├── config/
-│   │   └── config.h               # Configuration constants & runtime config
+│   │   └── config.h               # Configuration & CAN protocol constants
 │   ├── hid/
-│   │   ├── hid_keycodes.h         # USB HID key codes (keyboard, media, mouse)
-│   │   └── usb_hid_device.h       # UsbHidDevice class - USB HID interface
+│   │   ├── hid_keycodes.h         # USB HID key codes
+│   │   └── usb_hid_device.h       # USB HID device interface
 │   ├── idrive/
 │   │   └── idrive_controller.h    # IDriveController class - main orchestrator
 │   ├── input/
@@ -369,48 +312,29 @@ bmw-idrive-touch-esp32-s3/
 │   └── tusb_config.h              # TinyUSB configuration
 ├── src/
 │   ├── main.cpp                   # Application entry point
-│   ├── can/
-│   │   └── can_bus.cpp            # CanBus implementation
-│   ├── hid/
-│   │   └── usb_hid_device.cpp     # UsbHidDevice implementation
-│   ├── idrive/
-│   │   └── idrive_controller.cpp  # IDriveController implementation
-│   ├── input/
-│   │   ├── button_handler.cpp
-│   │   ├── joystick_handler.cpp
-│   │   ├── rotary_handler.cpp
-│   │   └── touchpad_handler.cpp
-│   └── utils/
-│       └── utils.cpp
-├── platformio.ini
-├── sdkconfig.defaults
-└── README.md
+│   ├── can/can_bus.cpp
+│   ├── hid/usb_hid_device.cpp
+│   ├── idrive/idrive_controller.cpp
+│   └── input/*.cpp
+├── docs/
+│   └── BMW_iDrive_CAN_Protocol_Research.md  # Detailed protocol documentation
+└── platformio.ini
 ```
-
-### Class Overview
-
-| Class | Responsibility |
-|-------|----------------|
-| **CanBus** | CAN bus communication via ESP32 TWAI driver |
-| **UsbHidDevice** | USB HID device with keyboard, mouse, media controls |
-| **IDriveController** | Main controller - orchestrates init, polling, event dispatch |
-| **ButtonHandler** | Maps iDrive buttons to Android/media keys |
-| **JoystickHandler** | Maps joystick to mouse movement or arrow keys |
-| **RotaryHandler** | Maps rotary encoder to volume up/down |
-| **TouchpadHandler** | Maps touchpad to mouse cursor movement |
 
 ### Data Flow
 
 ```
 ┌──────────────────┐    CAN Bus     ┌──────────────────┐
-│  iDrive          │    500kbps     │  CanBus          │
-│  Controller      │ ─────────────► │  (can_bus.cpp)   │
+│  iDrive ZBE4     │    500kbps     │  CanBus          │
+│  Controller      │ ─────────────► │  (TWAI driver)   │
 └──────────────────┘                └────────┬─────────┘
                                              │ callback
                                              ▼
                                     ┌──────────────────┐
                                     │ IDriveController │
-                                    │ OnCanMessage()   │
+                                    │ - HandleInput()  │
+                                    │ - HandleRotary() │
+                                    │ - HandleTouch()  │
                                     └────────┬─────────┘
                                              │ InputEvent
               ┌──────────────────────────────┼──────────────────────────────┐
@@ -420,18 +344,17 @@ bmw-idrive-touch-esp32-s3/
      │  JoystickHandler │         │  (Volume +/-)    │          │  (Mouse Move)    │
      └────────┬─────────┘         └────────┬─────────┘          └────────┬─────────┘
               │                            │                             │
-              └──────────────────────────────────────────────────────────┘
+              └────────────────────────────┴─────────────────────────────┘
                                            │
                                            ▼
                                   ┌──────────────────┐
                                   │  UsbHidDevice    │
-                                  │  (TinyUSB + RAII)│
+                                  │  (TinyUSB)       │
                                   └────────┬─────────┘
                                            │
                                            ▼
                                   ┌──────────────────┐
-                                  │  Android         │
-                                  │  Head Unit       │
+                                  │  Android Device  │
                                   └──────────────────┘
 ```
 
@@ -466,116 +389,151 @@ if (xSemaphoreTake(mutex_, portMAX_DELAY) == pdTRUE) {
          ┌─────────────────────────────────────────┐
          │              INITIALIZATION             │
          │                                         │
-         │  1. Setup USB HID                       │
-         │  2. Setup CAN (TWAI) at 500kbps         │
+         │  1. Setup USB HID (TinyUSB)             │
+         │  2. Setup CAN bus (TWAI) at 500kbps     │
          │  3. Send Rotary Init (0x273)            │
          │  4. Enable Backlight (0x202)            │
-         └─────────────────────────────────────────┘
-                            │
-                            ▼
+         └────────────────────┬────────────────────┘
+                              │
+                              ▼
          ┌─────────────────────────────────────────┐
          │         WAIT FOR ROTARY INIT            │
          │                                         │
-         │  Wait for Init Response (0x277)         │
+         │  Wait for response on 0x277             │
          │  Retry every 5 seconds if no response   │
-         └─────────────────────────────────────────┘
-                            │ Received 0x277
-                            ▼
+         └────────────────────┬────────────────────┘
+                              │ Received 0x277
+                              ▼
          ┌─────────────────────────────────────────┐
-         │         INIT TOUCHPAD                   │
+         │         START TOUCHPAD POLLING          │
          │                                         │
-         │  Send Touchpad Init (0xBF)              │
-         └─────────────────────────────────────────┘
-                            │
-                            ▼
+         │  Send poll to 0x317 every 5ms           │
+         │  (G-series specific!)                   │
+         └────────────────────┬────────────────────┘
+                              │
+                              ▼
          ┌─────────────────────────────────────────┐
-         │            COOLDOWN                     │
-         │                                         │
-         │  Wait 750ms for stability               │
-         └─────────────────────────────────────────┘
-                            │
-                            ▼
+         │            COOLDOWN (750ms)             │
+         └────────────────────┬────────────────────┘
+                              │
+                              ▼
          ┌─────────────────────────────────────────┐
-         │             READY                       │
+         │               READY                     │
          │                                         │
-         │  Process all inputs:                    │
-         │  - Buttons → Media/Android keys         │
-         │  - Rotary → Volume                      │
-         │  - Joystick → Mouse/Arrows              │
-         │  - Touchpad → Mouse movement            │
+         │  Process inputs:                        │
+         │  - Buttons (0x267) → Media keys         │
+         │  - Rotary (0x264) → Volume              │
+         │  - Touchpad (0x0BF) → Mouse             │
          │                                         │
          │  Periodic tasks:                        │
-         │  - Poll (0x501) every 500ms             │
+         │  - Touchpad poll (0x317) every 5ms      │
+         │  - Keepalive (0x501) every 500ms        │
          │  - Light (0x202) every 10s              │
          └─────────────────────────────────────────┘
-                            │ Status 0x06 received
-                            ▼
-                   ┌─────────────────┐
-                   │  REINITIALIZE   │
-                   └────────┬────────┘
-                            │
-                            └──────────► (back to INITIALIZATION)
 ```
 
 ## CAN Bus Protocol
+
+### G-Series ZBE4 Specifics
+
+This controller uses **K-CAN4** at **500 kbps**. Key difference from F-series: touchpad uses different TX ID.
 
 ### Message IDs
 
 | ID (Hex) | Direction | Description |
 |----------|-----------|-------------|
-| 0x273 | TX | Rotary encoder initialization |
-| 0x202 | TX | Backlight control |
-| 0x501 | TX | Keep-alive poll |
+| 0x273 | TX | Rotary encoder init |
+| 0x277 | RX | Rotary init response |
 | 0x264 | RX | Rotary encoder position |
 | 0x267 | RX | Button and joystick input |
-| 0x277 | RX | Initialization response |
+| 0x317 | **TX** | **Touchpad poll (G-series!)** |
+| 0x0BF | RX | Touchpad response data |
+| 0x202 | TX | Backlight control |
+| 0x501 | TX | Keepalive poll |
 | 0x5E7 | RX | Status messages |
-| 0xBF | TX/RX | Touchpad init and data |
 
-### Message Details
+### Touchpad Protocol (KEY DISCOVERY)
 
-#### Rotary Init (0x273)
-```
-Data: 1D E1 00 F0 FF 7F DE 04
-```
+**Critical**: byte[0] bit4 (0x10) must be SET for coordinates to update!
 
-#### Light Control (0x202)
-```
-Data: 02 FD 00  (ON)
-Data: 02 FE 00  (OFF)
+```cpp
+// Correct touchpad poll message
+uint8_t data[8] = {0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+can.Send(0x317, data, 8);  // Send every 5ms for 200Hz polling
 ```
 
-#### Poll (0x501)
+### Touchpad Response Format (0x0BF)
+
 ```
-Data: 01 00 00 00 00 00 00 00
+Byte 0: Counter (increments each message)
+Byte 1: X coordinate raw (0-255 per half)
+Byte 2: Lower nibble = half indicator (0=left, 1=right)
+        Upper nibble = flags (unknown)
+Byte 3: Y coordinate raw (0-31)
+Byte 4: Touch type (0x10=touch, 0x11=removed, 0x00=multi-touch)
+Byte 5-7: Reserved
 ```
 
-#### Button Input (0x267)
-```
-Byte 3: State (lower 4 bits: 0=released, 1=pressed, 2=held)
-Byte 4: Input type (0xC0=button, 0xDD=stick, 0xDE=center)
-Byte 5: Button ID or direction
+**Coordinate Processing (raw for maximum precision):**
+
+```cpp
+// X: combine halves for 0-511 range
+uint8_t raw_x = msg.data[1];
+uint8_t x_lr = msg.data[2] & 0x0F;
+int16_t x = (x_lr == 1) ? (256 + raw_x) : raw_x;  // 0-511
+
+// Y: use raw (0-31)
+int16_t y = msg.data[3];
 ```
 
-#### Rotary Position (0x264)
+### Button Input Format (0x267)
+
 ```
-Byte 3-4: 16-bit position counter (little endian)
+Byte 0: Counter
+Byte 1-2: Reserved
+Byte 3: State (lower nibble) | Direction (upper nibble for joystick)
+Byte 4: Input type (0xC0=button, 0xDD=stick, 0xDE=center press)
+Byte 5: Button ID
 ```
 
-#### Touchpad (0xBF)
+**Button IDs:**
+- 0x01: Menu, 0x02: Back, 0x04: Option
+- 0x08: Radio, 0x10: CD, 0x20: Nav, 0x40: Tel
+
+**Joystick Directions (byte[3] upper nibble):**
+- 0x01: Up, 0x02: Right, 0x04: Down, 0x08: Left
+
+**States (byte[3] lower nibble):**
+- 0x00: Released, 0x01: Pressed, 0x02: Held
+
+### Rotary Encoder Format (0x264)
+
 ```
-Byte 1: X position (0-255)
-Byte 2: X quadrant (0=left, 1=right)
-Byte 3: Y position (0-30)
-Byte 4: Touch type (0x10=single, 0x11=removed)
+Byte 3: Position low byte
+Byte 4: Position high byte
+```
+
+16-bit counter that wraps around. Calculate delta from previous value.
+
+### Other Messages
+
+**Rotary Init (0x273):**
+```
+Data: {0x1D, 0xE1, 0x00, 0xF0, 0xFF, 0x7F, 0xDE, 0x04}
+```
+
+**Light Control (0x202):**
+```
+Data: {0xFD, 0x00}  // ON
+Data: {0xFE, 0x00}  // OFF
+```
+
+**Keepalive Poll (0x501):**
+```
+Data: {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ```
 
 ## Building and Flashing
-
-### Prerequisites
-
-- [PlatformIO](https://platformio.org/) or [ESP-IDF](https://docs.espressif.com/projects/esp-idf/en/latest/)
-- USB cable for ESP32-S3
 
 ### Using PlatformIO (Recommended)
 
@@ -594,130 +552,85 @@ pio run --target upload
 pio device monitor
 ```
 
-### Using ESP-IDF
-
-```bash
-# Set target
-idf.py set-target esp32s3
-
-# Configure (optional)
-idf.py menuconfig
-
-# Build
-idf.py build
-
-# Flash
-idf.py flash
-
-# Monitor
-idf.py monitor
-```
-
 ## Configuration
 
-All configuration is centralized in `include/config/config.h` using modern C++17 patterns.
+All configuration is in `include/config/config.h`.
 
-### Runtime Configuration (struct Config)
+### Timing Configuration
 
-Runtime settings that can be changed per-instance:
-
-| Field | Type | Description | Default |
-|-------|------|-------------|---------|
-| `joystick_as_mouse` | bool | Joystick controls mouse instead of arrow keys | `true` |
-| `light_brightness` | uint8_t | Backlight brightness (0-255) | `100` |
-| `poll_interval_ms` | uint32_t | Polling interval in ms | `500` |
-| `light_keepalive_ms` | uint32_t | Light keepalive interval in ms | `10000` |
-| `min_mouse_travel` | int | Touch deadzone threshold | `5` |
-| `joystick_move_step` | int | Joystick mouse step size | `30` |
-
-**Example usage in main.cpp:**
 ```cpp
-idrive::Config config{
-    .joystick_as_mouse = true,
-    .light_brightness = 100,
-    .poll_interval_ms = 500,
-};
-idrive::IDriveController controller(can, hid, config);
+constexpr uint32_t kPollIntervalMs = 5;        // Touchpad poll rate (200Hz)
+constexpr uint32_t kLightKeepaliveMs = 10000;  // Backlight refresh
+constexpr uint32_t kControllerCooldownMs = 750; // Init delay
 ```
 
-### Compile-time Constants (namespace config)
+### Touchpad Sensitivity
 
-Constants in `idrive::config::` namespace:
-
-| Constant | Description | Default |
-|----------|-------------|---------|
-| `kCanBaudrate` | CAN bus speed | 500000 |
-| `kPollIntervalMs` | Default poll interval | 500 |
-| `kLightKeepaliveMs` | Light keepalive | 10000 |
-| `kControllerCooldownMs` | Ready delay after init | 750 |
-| `kMinMouseTravel` | Default touch deadzone | 5 |
-| `kJoystickMoveStep` | Default joystick step | 30 |
-| `kXMultiplier` / `kYMultiplier` | Touchpad sensitivity | 10 |
+```cpp
+// Raw coordinate multipliers (X: 0-511, Y: 0-31)
+constexpr int kXMultiplier = 5;   // X delta * 5 / 10 = 0.5 px/step
+constexpr int kYMultiplier = 30;  // Y delta * 30 / 10 = 3 px/step
+constexpr int kMinMouseTravel = 1; // Dead zone threshold
+```
 
 ### Debug Options
 
-Enable/disable in `include/config/config.h`:
-
 ```cpp
-namespace idrive::config {
-constexpr bool kSerialDebug = true;     // Serial output
-constexpr bool kDebugCan = false;       // Log CAN messages
-constexpr bool kDebugKeys = true;       // Log key events
-constexpr bool kDebugTouchpad = true;   // Log touchpad data
-}
+constexpr bool kSerialDebug = true;    // Enable serial output
+constexpr bool kDebugCan = false;      // Log all CAN messages
+constexpr bool kDebugKeys = true;      // Log button events
+constexpr bool kDebugTouchpad = true;  // Log touchpad data
 ```
-
-**Note:** Debug flags use `constexpr bool` instead of preprocessor `#define`. Set to `true` or `false` to enable/disable.
 
 ## Troubleshooting
 
 ### No Response from iDrive
 
 1. Check 12V power to iDrive controller
-2. Verify CAN-H and CAN-L wiring
-3. Check CAN bus termination (120Ω between CAN-H and CAN-L)
+2. Verify CAN-H and CAN-L wiring (not swapped)
+3. Add 120Ω termination resistor between CAN-H and CAN-L
 4. Verify CAN speed is 500kbps
 5. Check serial monitor for CAN errors
 
-### USB Not Recognized
-
-1. Ensure ESP32-S3 has USB OTG support
-2. Use a data-capable USB cable
-3. Check for USB enumeration in `dmesg` (Linux) or Device Manager (Windows)
-4. Verify TinyUSB configuration in `tusb_config.h`
-
 ### Touchpad Not Working
 
-1. Touchpad requires rotary init to complete first
-2. Check for touchpad messages (0xBF) in serial log
-3. Verify touchpad connector is secure
+1. Ensure rotary init completed first (watch for "Rotary Init Success" in logs)
+2. Verify poll message uses `0x10` in byte[0] (not `0x21`!)
+3. Check for touchpad messages on 0x0BF in serial log
+4. Touchpad is poll-based - must send 0x317 continuously
 
-### CAN Bus Errors
+### USB Not Recognized
 
-- **Error Passive**: Check termination and wiring
-- **Bus Off**: Severe bus error, check for shorts
-- **TX Failed**: Controller not responding, check power
+1. Ensure ESP32-S3 has USB OTG support (not all boards do)
+2. Use a data-capable USB cable (not charge-only)
+3. Try different USB port on host device
 
-### Known Limitations
+### Touchpad Moves Wrong Direction
 
-- Some iDrive variants may use different CAN IDs
-- Very old (E-series) or very new (G-series) controllers may require protocol adjustments
-- Touchpad sensitivity may need tuning for your preference
+Y-axis is inverted in code. If still wrong, check `touchpad_handler.cpp`:
+```cpp
+int8_t mouse_y = -delta_y * y_multiplier_ / 10;  // Negative = inverted
+```
+
+### Movement is Choppy
+
+1. Increase poll rate: `kPollIntervalMs = 5` (200Hz)
+2. Adjust multipliers for smoother feel
+3. Check for CAN bus errors causing dropped messages
+
+## Protocol Documentation
+
+For detailed protocol research and byte-level documentation, see:
+[docs/BMW_iDrive_CAN_Protocol_Research.md](docs/BMW_iDrive_CAN_Protocol_Research.md)
 
 ## License
 
 MIT License - See LICENSE file for details.
 
-## Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Follow Google C++ Style Guide
-4. Submit a pull request
-
 ## Acknowledgments
 
-- BMW enthusiast community for protocol documentation
+- BMW enthusiast community for initial protocol research
+- [thatdamnranga/iDrive](https://github.com/thatdamnranga/iDrive) - F-series protocol reference
+- [IAmOrion/BMW-iDrive-HID](https://github.com/IAmOrion/BMW-iDrive-HID) - BLE HID implementation reference
 - [TinyUSB](https://github.com/hathach/tinyusb) project
 - ESP-IDF team at Espressif

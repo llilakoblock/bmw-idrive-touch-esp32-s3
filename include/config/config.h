@@ -15,7 +15,7 @@ namespace idrive {
 
 struct Config {
     bool joystick_as_mouse = true;
-    uint8_t light_brightness = 100;
+    uint8_t  light_brightness   = 0;
     uint32_t poll_interval_ms = 500;
     uint32_t light_keepalive_ms = 10000;
     int min_mouse_travel = 5;
@@ -39,24 +39,26 @@ constexpr const char* kUsbSerialNumber = "123456";
 constexpr uint32_t kCanBaudrate = 500000;
 
 // Timing Configuration (milliseconds)
-constexpr uint32_t kPollIntervalMs = 500;
+constexpr uint32_t kPollIntervalMs = 5;   // 5ms = 200Hz for ultra-smooth mouse
 constexpr uint32_t kLightInitDurationMs = 1000;
 constexpr uint32_t kLightKeepaliveMs = 10000;
 constexpr uint32_t kControllerCooldownMs = 750;
 constexpr uint32_t kInitRetryIntervalMs = 5000;
 
 // Input Configuration
-constexpr int kMinMouseTravel = 5;
+constexpr int kMinMouseTravel = 1;      // Raw coords: 1 step threshold
 constexpr int kJoystickMoveStep = 30;
 constexpr int kTouchpadInitIgnoreCount = 0;
-constexpr int kXMultiplier = 10;
-constexpr int kYMultiplier = 10;
+// Raw coordinate multipliers (X: 0-511, Y: 0-30)
+// X: 512 steps, Y: 31 steps → Y needs ~16x more amplification
+constexpr int kXMultiplier = 5;         // X delta * 5 / 10 = 0.5 pixel per step
+constexpr int kYMultiplier = 30;        // Y delta * 30 / 10 = 3 pixels per step
 
 // Debug Configuration
-constexpr bool kSerialDebug = true;
-constexpr bool kDebugCan = false;
-constexpr bool kDebugKeys = true;
-constexpr bool kDebugTouchpad = true;
+constexpr bool kSerialDebug   = true;
+constexpr bool kDebugCan      = false;  // Reduce spam
+constexpr bool kDebugKeys     = true;
+constexpr bool kDebugTouchpad = true;   // See touch data
 
 }  // namespace config
 
@@ -71,7 +73,8 @@ constexpr uint32_t kInput = 0x267;       // Button and joystick input
 constexpr uint32_t kRotary = 0x264;      // Rotary encoder data
 constexpr uint32_t kRotaryInit = 0x277;  // Rotary initialization response
 constexpr uint32_t kStatus = 0x5E7;      // Status messages
-constexpr uint32_t kTouch = 0xBF;        // Touchpad data
+constexpr uint32_t kTouch        = 0xBF;       // Touchpad data (RX)
+constexpr uint32_t kTouchInitCmd = 0x317;      // Touchpad init command (TX)
 
 // Outgoing messages (to iDrive controller)
 constexpr uint32_t kRotaryInitCmd = 0x273;  // Rotary initialization command
