@@ -54,11 +54,11 @@ bool TouchpadHandler::Handle(const InputEvent& event) {
         int16_t delta_y2 = event.y2 - prev_y2_;
         int16_t avg_delta_y = (delta_y1 + delta_y2) / 2;
 
-        // Apply threshold
-        if (std::abs(avg_delta_y) >= min_travel_ * 50) {  // Higher threshold for scroll
+        // Apply threshold (Y range is 0-511, so threshold ~5 steps)
+        if (std::abs(avg_delta_y) >= min_travel_ * 5) {
             // Convert to scroll (negative = scroll down, positive = scroll up)
             int8_t scroll = utils::Constrain(
-                avg_delta_y * config::kScrollMultiplier / 100, -127, 127);
+                avg_delta_y * config::kScrollMultiplier / 10, -127, 127);
 
             if (scroll != 0) {
                 ESP_LOGD(kTag, "Touchpad scroll: %d (delta_y: %d)", scroll, avg_delta_y);

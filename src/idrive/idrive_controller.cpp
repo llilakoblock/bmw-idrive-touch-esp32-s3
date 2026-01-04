@@ -291,24 +291,26 @@ void IDriveController::HandleTouchpadMessage(const CanMessage& msg) {
 
     if (touch_type == protocol::kTouchSingle || touch_type == protocol::kTouchMulti ||
         touch_type == protocol::kTouchTriple || touch_type == protocol::kTouchQuad) {
-        // G-series ZBE4 multi-touch protocol:
-        // Byte 1: Finger 1 X (8-bit, 0-255)
-        // Bytes 2-3: Finger 1 Y (12-bit little-endian, 0-8191)
+        // G-series ZBE4 multi-touch protocol (both axes 9-bit, 0-511):
+        // Byte 1: Finger 1 X low byte (0-255)
+        // Byte 2: [high nibble = F1 Y low 4 bits] [low nibble = F1 X high bit]
+        // Byte 3: Finger 1 Y high 5 bits (0-31)
         // Byte 4: Touch state
-        // Byte 5: Finger 2 X (8-bit, 0-255)
-        // Bytes 6-7: Finger 2 Y (12-bit little-endian, 0-8191)
+        // Byte 5: Finger 2 X low byte (0-255)
+        // Byte 6: [high nibble = F2 Y low 4 bits] [low nibble = F2 X high bit]
+        // Byte 7: Finger 2 Y high 5 bits (0-31)
 
-        // Finger 1 coordinates
-        event.x = msg.data[1];
-        event.y = msg.data[2] | (static_cast<int16_t>(msg.data[3]) << 8);
+        // Finger 1 coordinates (0-511 range each)
+        event.x = msg.data[1] + 256 * (msg.data[2] & 0x01);
+        event.y = (static_cast<int16_t>(msg.data[3]) << 4) | (msg.data[2] >> 4);
 
         // Check for multi-touch (state 0x00 = two fingers)
         event.two_fingers = (touch_type == protocol::kTouchMulti);
 
         if (event.two_fingers) {
-            // Finger 2 coordinates
-            event.x2 = msg.data[5];
-            event.y2 = msg.data[6] | (static_cast<int16_t>(msg.data[7]) << 8);
+            // Finger 2 coordinates (0-511 range each)
+            event.x2 = msg.data[5] + 256 * (msg.data[6] & 0x01);
+            event.y2 = (static_cast<int16_t>(msg.data[7]) << 4) | (msg.data[6] >> 4);
         }
 
         DispatchEvent(event);

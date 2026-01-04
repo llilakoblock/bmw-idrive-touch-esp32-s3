@@ -85,17 +85,21 @@ G-series ZBE4 touchpad is **POLL-BASED**:
 ├────────┬────────┬────────┬────────┬────────┬────────┬────────┬────────┤
 │ Byte 0 │ Byte 1 │ Byte 2 │ Byte 3 │ Byte 4 │ Byte 5 │ Byte 6 │ Byte 7 │
 ├────────┼────────┼────────┼────────┼────────┼────────┼────────┼────────┤
-│ Counter│ F1 X   │ F1 Y-L │ F1 Y-H │ State  │ F2 X   │ F2 Y-L │ F2 Y-H │
+│ Counter│ F1 X-L │F1 XH/YL│ F1 Y-H │ State  │ F2 X-L │F2 XH/YL│ F2 Y-H │
 └────────┴────────┴────────┴────────┴────────┴────────┴────────┴────────┘
 
 Byte 0: Sequence counter (low nibble cycles 0-F)
-Byte 1: Finger 1 X coordinate (8-bit)
-Byte 2: Finger 1 Y low byte
-Byte 3: Finger 1 Y high byte
+Byte 1: Finger 1 X low byte (0-255)
+Byte 2: [high nibble = F1 Y low 4 bits] [low nibble = F1 X high bit (0/1)]
+Byte 3: Finger 1 Y high 5 bits (0-31)
 Byte 4: Touch state
-Byte 5: Finger 2 X coordinate (8-bit, 0x00 if single finger)
-Byte 6: Finger 2 Y low byte (0x00 if single finger)
-Byte 7: Finger 2 Y high byte (0x00 if single finger)
+Byte 5: Finger 2 X low byte (0-255, 0x00 if single finger)
+Byte 6: [high nibble = F2 Y low 4 bits] [low nibble = F2 X high bit]
+Byte 7: Finger 2 Y high 5 bits (0-31, 0x00 if single finger)
+
+Coordinate decoding (both X and Y are 9-bit, range 0-511):
+  X = byte1 + 256 * (byte2 & 0x01)
+  Y = (byte3 << 4) | (byte2 >> 4)
 ```
 
 ### Touch States (byte[4])
@@ -113,47 +117,58 @@ Byte 7: Finger 2 Y high byte (0x00 if single finger)
 ```
 Two fingers moving in circles:
 [3E 7A 61 1A 00 D4 71 15]
- │  │  └──┬──┘ │  │  └──┬──┘
- │  │     │    │  │     └── F2 Y = 0x1571 (5489)
- │  │     │    │  └──────── F2 X = 0xD4 (212)
- │  │     │    └─────────── State = 0x00 (two fingers)
- │  │     └──────────────── F1 Y = 0x1A61 (6753)
- │  └────────────────────── F1 X = 0x7A (122)
- └───────────────────────── Seq = 0x3E
+ │  │  │  │  │  │  │  │
+ │  │  │  │  │  │  │  └── F2 Y high = 0x15 (21)
+ │  │  │  │  │  │  └───── F2 Y low|X high = 0x71 → Y_lo=7, X_hi=1
+ │  │  │  │  │  └──────── F2 X low = 0xD4 (212)
+ │  │  │  │  └─────────── State = 0x00 (two fingers)
+ │  │  │  └────────────── F1 Y high = 0x1A (26)
+ │  │  └───────────────── F1 Y low|X high = 0x61 → Y_lo=6, X_hi=1
+ │  └──────────────────── F1 X low = 0x7A (122)
+ └─────────────────────── Seq = 0x3E
 
-Single finger:
-[34 CB A0 19 10 00 00 00]
-                │  └─────── No Finger 2 data
-                └────────── State = 0x10 (one finger)
+ Decoded coordinates:
+ F1: X = 122 + 256*1 = 378,  Y = (26<<4)|6 = 422
+ F2: X = 212 + 256*1 = 468,  Y = (21<<4)|7 = 343
+
+Single finger at bottom edge:
+[30 1A 31 00 10 00 00 00]
+       │  │  │
+       │  │  └── Y high = 0x00, Y = (0<<4)|3 = 3 (bottom)
+       │  └───── Y low|X high = 0x31 → Y_lo=3, X_hi=1
+       └──────── X low = 0x1A → X = 26 + 256 = 282
 ```
 
 ### Coordinate System
 
-**Finger X Coordinate (byte[1] for F1, byte[5] for F2):**
-- Range: **0x00-0xFF** (0-255)
-- 0x00 = left edge
-- 0xFF = right edge
+**Both X and Y are 9-bit (0-511 range):**
 
-**Finger Y Coordinate (bytes[2-3] for F1, bytes[6-7] for F2):**
-- 12-bit value, little-endian
-- Range: approximately **0x000-0x1FFF** (0-8191)
-- Lower values = bottom edge
-- Higher values = top edge
+**X Coordinate:**
+- `X = byte1 + 256 * (byte2 & 0x01)`
+- Range: **0-511**
+- 0 = left edge, 511 = right edge
+
+**Y Coordinate:**
+- `Y = (byte3 << 4) | (byte2 >> 4)`
+- Range: **0-511**
+- 0 = bottom edge, 511 = top edge
+- byte3 provides main position (0-31, 32 steps)
+- byte2 high nibble provides sub-position (0-15, 16 steps per main step)
 
 ### Raw Coordinate Processing (Updated for Multi-Touch)
 
 ```cpp
-// Finger 1 coordinates
-uint8_t f1_x = msg.data[1];
-uint16_t f1_y = msg.data[2] | (static_cast<uint16_t>(msg.data[3]) << 8);
+// Finger 1 coordinates (9-bit, 0-511 range)
+int16_t f1_x = msg.data[1] + 256 * (msg.data[2] & 0x01);
+int16_t f1_y = (msg.data[3] << 4) | (msg.data[2] >> 4);
 
 // Touch state
 uint8_t state = msg.data[4];
 bool two_fingers = (state == 0x00);
 
 // Finger 2 coordinates (only valid when state == 0x00)
-uint8_t f2_x = msg.data[5];
-uint16_t f2_y = msg.data[6] | (static_cast<uint16_t>(msg.data[7]) << 8);
+int16_t f2_x = msg.data[5] + 256 * (msg.data[6] & 0x01);
+int16_t f2_y = (msg.data[7] << 4) | (msg.data[6] >> 4);
 
 // Multi-touch gesture detection
 if (two_fingers) {
