@@ -14,6 +14,7 @@
 - [Hardware Requirements](#hardware-requirements)
 - [Wiring Diagram](#wiring-diagram)
 - [Button Mapping](#button-mapping)
+- [Custom Button Remapping (Android)](#custom-button-remapping-android)
 - [Software Architecture](#software-architecture)
 - [OTA Firmware Updates](#ota-firmware-updates)
 - [CAN Bus Protocol](#can-bus-protocol)
@@ -287,6 +288,71 @@ Instead of a car head unit, use any Android smartphone or tablet with USB OTG su
 │                                                     │
 └─────────────────────────────────────────────────────┘
 ```
+
+## Custom Button Remapping (Android)
+
+The iDrive buttons send standard USB HID media keys that Android recognizes. While the default mapping (see table above) works out of the box, you can customize what each button does using the **Key Mapper** app.
+
+### Why Key Mapper?
+
+USB HID standard doesn't have keycodes for "Open Settings" or "Launch Navigation" - it only defines generic actions like Play/Pause, Home, Back, etc. Key Mapper intercepts these key presses and lets you trigger any action: open apps, toggle settings, run shortcuts, and more.
+
+### Installation
+
+| Source | Link |
+|--------|------|
+| **F-Droid** | [Key Mapper](https://f-droid.org/packages/io.github.sds100.keymapper/) |
+| **Google Play** | [Key Mapper](https://play.google.com/store/apps/details?id=io.github.sds100.keymapper) |
+| **GitHub** | [sds100/KeyMapper](https://github.com/sds100/KeyMapper) |
+
+> **Note**: F-Droid version is recommended - it's open source and ad-free.
+
+### Setup Steps
+
+1. **Install Key Mapper** from F-Droid or Play Store
+2. **Grant Accessibility Service** - required for intercepting key presses
+   - Open Key Mapper → Settings → "Enable accessibility service"
+3. **Create New Key Map**:
+   - Tap "+" to add new mapping
+   - Tap "Record Trigger" → press the iDrive button you want to remap
+   - Select Action → "App" → choose the app you want to launch
+4. **Enable the mapping** - toggle it on
+
+### Example Mappings
+
+Here are useful remapping ideas for iDrive buttons:
+
+| iDrive Button | Default HID | Suggested Remap | Use Case |
+|---------------|-------------|-----------------|----------|
+| **TEL** | Search | Phone/Dialer app | Quick calling |
+| **NAV** | Home | Google Maps / Waze | Navigation |
+| **OPTION** | Play/Pause | Settings | Quick access |
+| **RADIO** | Prev Track | Music app (Spotify) | Launch player |
+| **CD** | Next Track | Android Auto | Toggle AA mode |
+
+### Advanced Key Mapper Features
+
+- **Long press actions** - different action for hold vs tap
+- **Double tap** - trigger on quick double press
+- **Constraints** - only active in certain apps
+- **Key sequences** - combine multiple buttons
+- **System actions** - toggle WiFi, Bluetooth, flashlight, etc.
+
+### iDrive HID Key Codes Reference
+
+When recording keys in Key Mapper, you'll see these codes:
+
+| Button | HID Usage Code | Key Mapper Shows |
+|--------|---------------|------------------|
+| MENU | 0x0040 | "Menu" |
+| BACK | 0x0224 | "AC Back" |
+| NAV | 0x0223 | "AC Home" |
+| TEL | 0x0221 | "AC Search" |
+| OPTION | 0x00CD | "Play/Pause" |
+| RADIO | 0x00B6 | "Scan Previous Track" |
+| CD | 0x00B5 | "Scan Next Track" |
+
+> **Tip**: If a button doesn't register in Key Mapper, try enabling "Log key events" in Key Mapper settings to debug.
 
 ## Software Architecture
 
