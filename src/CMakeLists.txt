@@ -2,6 +2,7 @@ idf_component_register(
     SRCS
         "main.cpp"
         "can/can_bus.cpp"
+        "can/can_task.cpp"
         "hid/usb_hid_device.cpp"
         "idrive/idrive_controller.cpp"
         "input/button_handler.cpp"

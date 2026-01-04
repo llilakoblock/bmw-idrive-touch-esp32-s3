@@ -27,8 +27,12 @@ bool CanBus::Init(uint32_t baudrate) {
     general_config.clkout_io = GPIO_NUM_NC;
     general_config.bus_off_io = GPIO_NUM_NC;
     general_config.tx_queue_len = 10;
-    general_config.rx_queue_len = 10;
-    general_config.alerts_enabled = TWAI_ALERT_ALL;
+    general_config.rx_queue_len = 20;  // Larger RX buffer for high traffic
+    general_config.alerts_enabled = TWAI_ALERT_RX_DATA |
+                                    TWAI_ALERT_ERR_PASS |
+                                    TWAI_ALERT_BUS_OFF |
+                                    TWAI_ALERT_TX_FAILED |
+                                    TWAI_ALERT_RX_QUEUE_FULL;
     general_config.clkout_divider = 0;
     general_config.intr_flags = ESP_INTR_FLAG_LEVEL1;
 
