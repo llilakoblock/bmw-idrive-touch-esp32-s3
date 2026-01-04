@@ -59,8 +59,9 @@ bool TouchpadHandler::Handle(const InputEvent& event) {
         // Scale movement for better feel.
         int8_t mouse_x = utils::Constrain(
             delta_x * x_multiplier_ / 10, -127, 127);
+        // Y-axis inverted (touchpad Y increases downward, screen Y increases upward).
         int8_t mouse_y = utils::Constrain(
-            delta_y * y_multiplier_ / 10, -127, 127);
+            -delta_y * y_multiplier_ / 10, -127, 127);
 
         ESP_LOGI(kTag, "Touchpad move: x=%d, y=%d (delta: %d, %d)",
                  mouse_x, mouse_y, delta_x, delta_y);

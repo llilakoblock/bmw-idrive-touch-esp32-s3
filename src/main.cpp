@@ -32,12 +32,12 @@ extern "C" void app_main() {
     idrive::UsbHidDevice& hid = idrive::GetUsbHidDevice();
 
     // Configuration.
-    idrive::Config config{
-        .joystick_as_mouse = true,
-        .light_brightness = 100,
-        .poll_interval_ms = idrive::config::kPollIntervalMs,
+    idrive::Config config {
+        .joystick_as_mouse  = true,
+        .light_brightness   = 255,
+        .poll_interval_ms   = idrive::config::kPollIntervalMs,
         .light_keepalive_ms = idrive::config::kLightKeepaliveMs,
-        .min_mouse_travel = idrive::config::kMinMouseTravel,
+        .min_mouse_travel   = idrive::config::kMinMouseTravel,
         .joystick_move_step = idrive::config::kJoystickMoveStep,
     };
 

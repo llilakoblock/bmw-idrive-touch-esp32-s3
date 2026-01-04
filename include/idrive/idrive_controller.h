@@ -63,6 +63,7 @@ private:
     bool ready_ = false;
     bool rotary_init_done_ = false;
     bool touchpad_init_done_ = false;
+    bool touchpad_active_ = false;  // True after receiving first 0xBF response
     bool light_init_done_ = false;
     bool rotary_position_set_ = false;
     bool light_enabled_ = true;
@@ -76,6 +77,7 @@ private:
     uint32_t last_poll_time_ = 0;
     uint32_t last_light_time_ = 0;
     uint32_t last_reinit_time_ = 0;
+    uint32_t last_touchpad_init_time_ = 0;
 
     // CAN message handlers.
     void OnCanMessage(const CanMessage& msg);
