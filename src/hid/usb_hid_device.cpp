@@ -168,6 +168,8 @@ bool UsbHidDevice::Init() {
             sizeof(kStringDescriptor) / sizeof(kStringDescriptor[0]),
         .external_phy = false,
         .configuration_descriptor = kHidConfigurationDescriptor,
+        .self_powered = false,
+        .vbus_monitor_io = -1,
     };
 
     esp_err_t err = tinyusb_driver_install(&tusb_cfg);

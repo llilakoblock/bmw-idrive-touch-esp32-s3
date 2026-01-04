@@ -4,6 +4,7 @@
 #include "idrive/idrive_controller.h"
 
 #include "esp_log.h"
+#include "ota/ota_trigger.h"
 #include "utils/utils.h"
 
 namespace idrive {
@@ -184,6 +185,10 @@ void IDriveController::HandleInputMessage(const CanMessage& msg) {
     InputEvent event;
 
     if (input_type == protocol::kInputTypeButton) {
+        // Forward button events to OTA trigger for combo detection.
+        if (ota_trigger_) {
+            ota_trigger_->OnButtonEvent(input, state);
+        }
         event.type = InputEvent::Type::Button;
         event.id = input;
         event.state = state;
