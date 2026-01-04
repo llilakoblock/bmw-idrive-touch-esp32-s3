@@ -19,6 +19,9 @@
 
 namespace idrive {
 
+// Forward declaration for OTA trigger.
+namespace ota { class OtaTrigger; }
+
 // =============================================================================
 // iDrive Controller Class
 // =============================================================================
@@ -47,6 +50,9 @@ public:
     RotaryHandler* GetRotaryHandler() { return rotary_handler_; }
     TouchpadHandler* GetTouchpadHandler() { return touchpad_handler_; }
 
+    // Set OTA trigger for button combo detection.
+    void SetOtaTrigger(ota::OtaTrigger* trigger) { ota_trigger_ = trigger; }
+
 private:
     CanBus& can_;
     UsbHidDevice& hid_;
@@ -70,6 +76,9 @@ private:
 
     uint32_t rotary_position_ = 0;
     int touchpad_init_ignore_counter_ = 0;
+
+    // OTA trigger (optional, for button combo detection).
+    ota::OtaTrigger* ota_trigger_ = nullptr;
 
     // Timing.
     uint32_t init_start_time_ = 0;

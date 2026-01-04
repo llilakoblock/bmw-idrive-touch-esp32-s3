@@ -4,6 +4,7 @@
 #include "idrive/idrive_controller.h"
 
 #include "esp_log.h"
+#include "ota/ota_trigger.h"
 #include "utils/utils.h"
 
 namespace idrive {
@@ -184,6 +185,10 @@ void IDriveController::HandleInputMessage(const CanMessage& msg) {
     InputEvent event;
 
     if (input_type == protocol::kInputTypeButton) {
+        // Forward button events to OTA trigger for combo detection.
+        if (ota_trigger_) {
+            ota_trigger_->OnButtonEvent(input, state);
+        }
         event.type = InputEvent::Type::Button;
         event.id = input;
         event.state = state;
@@ -284,19 +289,30 @@ void IDriveController::HandleTouchpadMessage(const CanMessage& msg) {
         return;
     }
 
-    if (touch_type == protocol::kTouchSingle || touch_type == protocol::kTouchMulti) {
-        // Use RAW coordinates for maximum precision.
-        // X: combine half indicator with raw value to get 0-511 range.
-        // Left half (x_lr=0): 0-255, Right half (x_lr=1): 256-511.
-        uint8_t raw_x = msg.data[1];
-        uint8_t x_lr = msg.data[2] & 0x0F;
-        int16_t combined_x = (x_lr == 1) ? (256 + raw_x) : raw_x;
+    if (touch_type == protocol::kTouchSingle || touch_type == protocol::kTouchMulti ||
+        touch_type == protocol::kTouchTriple || touch_type == protocol::kTouchQuad) {
+        // G-series ZBE4 multi-touch protocol (both axes 9-bit, 0-511):
+        // Byte 1: Finger 1 X low byte (0-255)
+        // Byte 2: [high nibble = F1 Y low 4 bits] [low nibble = F1 X high bit]
+        // Byte 3: Finger 1 Y high 5 bits (0-31)
+        // Byte 4: Touch state
+        // Byte 5: Finger 2 X low byte (0-255)
+        // Byte 6: [high nibble = F2 Y low 4 bits] [low nibble = F2 X high bit]
+        // Byte 7: Finger 2 Y high 5 bits (0-31)
 
-        // Y: use raw value directly (0-30 range).
-        int16_t raw_y = msg.data[3];
+        // Finger 1 coordinates (0-511 range each)
+        event.x = msg.data[1] + 256 * (msg.data[2] & 0x01);
+        event.y = (static_cast<int16_t>(msg.data[3]) << 4) | (msg.data[2] >> 4);
 
-        event.x = combined_x;
-        event.y = raw_y;
+        // Check for multi-touch (state 0x00 = two fingers)
+        event.two_fingers = (touch_type == protocol::kTouchMulti);
+
+        if (event.two_fingers) {
+            // Finger 2 coordinates (0-511 range each)
+            event.x2 = msg.data[5] + 256 * (msg.data[6] & 0x01);
+            event.y2 = (static_cast<int16_t>(msg.data[7]) << 4) | (msg.data[6] >> 4);
+        }
+
         DispatchEvent(event);
     }
 }

@@ -168,6 +168,8 @@ bool UsbHidDevice::Init() {
             sizeof(kStringDescriptor) / sizeof(kStringDescriptor[0]),
         .external_phy = false,
         .configuration_descriptor = kHidConfigurationDescriptor,
+        .self_powered = false,
+        .vbus_monitor_io = -1,
     };
 
     esp_err_t err = tinyusb_driver_install(&tusb_cfg);
@@ -177,10 +179,20 @@ bool UsbHidDevice::Init() {
         return false;
     }
 
-    xTaskCreate(UsbDeviceTask, "TinyUSB", 4096, nullptr, 5, nullptr);
+    // Pin TinyUSB task to Core 0 (system core) to avoid contention with
+    // real-time CAN processing on Core 1.
+    xTaskCreatePinnedToCore(
+        UsbDeviceTask,
+        "TinyUSB",
+        4096,
+        nullptr,
+        5,              // Priority
+        nullptr,
+        0               // Core 0 (PRO_CPU)
+    );
 
     initialized_ = true;
-    ESP_LOGI(kTag, "USB HID initialized");
+    ESP_LOGI(kTag, "USB HID initialized on core 0");
     return true;
 }
 

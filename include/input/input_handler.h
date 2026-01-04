@@ -26,8 +26,11 @@ struct InputEvent {
     Type type;
     uint8_t id = 0;       // Button ID or direction
     uint8_t state = 0;    // Pressed/Released/Held
-    int16_t x = 0;        // For touchpad
-    int16_t y = 0;        // For touchpad
+    int16_t x = 0;        // Finger 1 X (0-511, 9-bit)
+    int16_t y = 0;        // Finger 1 Y (0-511, 9-bit)
+    int16_t x2 = 0;       // Finger 2 X (0-511, valid when two_fingers=true)
+    int16_t y2 = 0;       // Finger 2 Y (0-511, valid when two_fingers=true)
+    bool two_fingers = false;  // Multi-touch active
     int16_t delta = 0;    // For rotary encoder
 };
 

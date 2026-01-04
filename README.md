@@ -15,6 +15,7 @@
 - [Wiring Diagram](#wiring-diagram)
 - [Button Mapping](#button-mapping)
 - [Software Architecture](#software-architecture)
+- [OTA Firmware Updates](#ota-firmware-updates)
 - [CAN Bus Protocol](#can-bus-protocol)
 - [Building and Flashing](#building-and-flashing)
 - [Configuration](#configuration)
@@ -73,16 +74,18 @@ This adapter solves the problem by:
 | **Joystick** | Mouse movement / Arrow keys | ✅ Working |
 | **Joystick Center** | Mouse click / Enter | ✅ Working |
 | **Touchpad** | Mouse cursor movement | ✅ Working |
+| **Two-finger scroll** | Scroll wheel emulation | ✅ Working |
 | **Backlight** | Illumination control | ✅ Working |
+| **OTA Updates** | WiFi firmware upload | ✅ Working |
 
 ### Touchpad Specifications
 
 | Parameter | Value |
 |-----------|-------|
-| X Resolution | 512 steps (256 per half) |
-| Y Resolution | 32 steps |
+| X Resolution | 512 steps (9-bit) |
+| Y Resolution | 512 steps (9-bit) |
 | Poll Rate | 200 Hz (5ms) |
-| Multi-touch | Up to 4 fingers detected |
+| Multi-touch | Up to 2 fingers with coordinates |
 
 ## Hardware Requirements
 
@@ -275,7 +278,7 @@ Instead of a car head unit, use any Android smartphone or tablet with USB OTG su
 │                                                     │
 │            ┌─────────────────────┐                  │
 │            │      Touchpad       │                  │
-│            │   512x32 resolution │                  │
+│            │  512x512 resolution │                  │
 │            │   (Mouse Cursor)    │                  │
 │            └─────────────────────┘                  │
 │                                                     │
@@ -293,7 +296,8 @@ Instead of a car head unit, use any Android smartphone or tablet with USB OTG su
 bmw-idrive-touch-esp32-s3/
 ├── include/
 │   ├── can/
-│   │   └── can_bus.h              # CAN bus communication (TWAI driver)
+│   │   ├── can_bus.h              # CAN bus communication (TWAI driver)
+│   │   └── can_task.h             # Event-driven CAN task (Core 1)
 │   ├── config/
 │   │   └── config.h               # Configuration & CAN protocol constants
 │   ├── hid/
@@ -307,17 +311,26 @@ bmw-idrive-touch-esp32-s3/
 │   │   ├── joystick_handler.h     # JoystickHandler - mouse/arrows
 │   │   ├── rotary_handler.h       # RotaryHandler - volume control
 │   │   └── touchpad_handler.h     # TouchpadHandler - mouse cursor
+│   ├── ota/
+│   │   ├── ota_config.h           # OTA configuration (WiFi AP, etc.)
+│   │   ├── ota_manager.h          # OTA orchestrator
+│   │   ├── ota_trigger.h          # Button combo detection
+│   │   └── web_server.h           # HTTP upload server
 │   ├── utils/
 │   │   └── utils.h                # Utility functions (GetMillis, etc.)
 │   └── tusb_config.h              # TinyUSB configuration
 ├── src/
 │   ├── main.cpp                   # Application entry point
-│   ├── can/can_bus.cpp
+│   ├── can/
+│   │   ├── can_bus.cpp
+│   │   └── can_task.cpp           # Event-driven CAN processing
 │   ├── hid/usb_hid_device.cpp
 │   ├── idrive/idrive_controller.cpp
-│   └── input/*.cpp
+│   ├── input/*.cpp
+│   └── ota/*.cpp                  # OTA implementation
 ├── docs/
 │   └── BMW_iDrive_CAN_Protocol_Research.md  # Detailed protocol documentation
+├── partitions_ota.csv             # 8MB flash partition table
 └── platformio.ini
 ```
 
@@ -432,6 +445,83 @@ if (xSemaphoreTake(mutex_, portMAX_DELAY) == pdTRUE) {
          └─────────────────────────────────────────┘
 ```
 
+### Task Architecture (Dual-Core ESP32-S3)
+
+The firmware utilizes both cores of the ESP32-S3 for optimal real-time performance:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         ESP32-S3 Dual-Core                          │
+├─────────────────────────────┬───────────────────────────────────────┤
+│        CORE 0 (PRO)         │           CORE 1 (APP)                │
+│                             │                                       │
+│  ┌───────────────────────┐  │  ┌─────────────────────────────────┐  │
+│  │     TinyUSB Task      │  │  │       CAN Task (Event-Driven)   │  │
+│  │   - USB enumeration   │  │  │   - twai_read_alerts() blocks   │  │
+│  │   - HID reports       │  │  │   - Process CAN messages        │  │
+│  │   - 1ms loop          │  │  │   - High priority (10)          │  │
+│  └───────────────────────┘  │  └─────────────────────────────────┘  │
+│                             │                                       │
+│  ┌───────────────────────┐  │                                       │
+│  │     Main Loop         │  │                                       │
+│  │   - Controller.Update │  │                                       │
+│  │   - OTA check         │  │                                       │
+│  │   - 50ms loop         │  │                                       │
+│  └───────────────────────┘  │                                       │
+├─────────────────────────────┴───────────────────────────────────────┤
+│  Why this distribution:                                             │
+│  • USB stack (TinyUSB) runs on Core 0 - default ESP-IDF behavior    │
+│  • CAN processing on Core 1 - no interference with USB              │
+│  • Event-driven CAN - blocks on twai_read_alerts(), low CPU usage   │
+│  • Main loop can be slow (50ms) - CAN handles real-time events      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+## OTA Firmware Updates
+
+The adapter supports Over-The-Air firmware updates via WiFi, allowing you to update the firmware without physical access to the USB port.
+
+### How to Trigger OTA Mode
+
+1. **Hold MENU + BACK buttons** on the iDrive controller for **3 seconds**
+2. The adapter will create a WiFi access point
+3. Connect to the AP and upload new firmware
+
+### OTA WiFi Configuration
+
+| Parameter | Value |
+|-----------|-------|
+| SSID | `iDrive-OTA` |
+| Password | `idrive2024` |
+| IP Address | `192.168.4.1` |
+| Upload URL | `http://192.168.4.1/` |
+
+### Firmware Upload Steps
+
+1. Trigger OTA mode (MENU + BACK for 3 seconds)
+2. Connect your phone/laptop to `iDrive-OTA` WiFi
+3. Open browser and go to `http://192.168.4.1/`
+4. Select the new `firmware.bin` file and upload
+5. Wait for upload to complete and device to reboot
+
+### OTA Partition Layout (8MB Flash)
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  0x000000  │  bootloader (0x8000)                            │
+├────────────┼─────────────────────────────────────────────────┤
+│  0x008000  │  partition table (0x1000)                       │
+├────────────┼─────────────────────────────────────────────────┤
+│  0x009000  │  NVS storage (0x6000)                           │
+├────────────┼─────────────────────────────────────────────────┤
+│  0x00F000  │  OTA data (0x2000)                              │
+├────────────┼─────────────────────────────────────────────────┤
+│  0x020000  │  ota_0 - Main firmware (~3.9MB)                 │
+├────────────┼─────────────────────────────────────────────────┤
+│  0x410000  │  ota_1 - Backup firmware (~3.9MB)               │
+└────────────┴─────────────────────────────────────────────────┘
+```
+
 ## CAN Bus Protocol
 
 ### G-Series ZBE4 Specifics
@@ -465,25 +555,22 @@ can.Send(0x317, data, 8);  // Send every 5ms for 200Hz polling
 ### Touchpad Response Format (0x0BF)
 
 ```
-Byte 0: Counter (increments each message)
-Byte 1: X coordinate raw (0-255 per half)
-Byte 2: Lower nibble = half indicator (0=left, 1=right)
-        Upper nibble = flags (unknown)
-Byte 3: Y coordinate raw (0-31)
-Byte 4: Touch type (0x10=touch, 0x11=removed, 0x00=multi-touch)
-Byte 5-7: Reserved
+Byte 0: Counter (low nibble cycles 0-F)
+Byte 1: Finger 1 X low byte (0-255)
+Byte 2: [high nibble = Y low 4 bits] [low nibble = X high bit (0/1)]
+Byte 3: Finger 1 Y high 5 bits (0-31)
+Byte 4: Touch state (0x10=1 finger, 0x11=removed, 0x00=2 fingers)
+Byte 5-7: Finger 2 data (same format as bytes 1-3)
 ```
 
-**Coordinate Processing (raw for maximum precision):**
+**Coordinate Processing (9-bit X and Y, range 0-511):**
 
 ```cpp
-// X: combine halves for 0-511 range
-uint8_t raw_x = msg.data[1];
-uint8_t x_lr = msg.data[2] & 0x0F;
-int16_t x = (x_lr == 1) ? (256 + raw_x) : raw_x;  // 0-511
+// X: 9-bit (byte1 + high bit from byte2)
+int16_t x = msg.data[1] + 256 * (msg.data[2] & 0x01);
 
-// Y: use raw (0-31)
-int16_t y = msg.data[3];
+// Y: 9-bit (byte3 << 4 | byte2 high nibble)
+int16_t y = (msg.data[3] << 4) | (msg.data[2] >> 4);
 ```
 
 ### Button Input Format (0x267)
@@ -567,9 +654,9 @@ constexpr uint32_t kControllerCooldownMs = 750; // Init delay
 ### Touchpad Sensitivity
 
 ```cpp
-// Raw coordinate multipliers (X: 0-511, Y: 0-31)
+// Raw coordinate multipliers (both X and Y: 0-511, 9-bit resolution)
 constexpr int kXMultiplier = 5;   // X delta * 5 / 10 = 0.5 px/step
-constexpr int kYMultiplier = 30;  // Y delta * 30 / 10 = 3 px/step
+constexpr int kYMultiplier = 5;   // Y delta * 5 / 10 = 0.5 px/step (same as X!)
 constexpr int kMinMouseTravel = 1; // Dead zone threshold
 ```
 
