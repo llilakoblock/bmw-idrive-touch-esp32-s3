@@ -49,10 +49,14 @@ constexpr uint32_t kInitRetryIntervalMs = 5000;
 constexpr int kMinMouseTravel = 1;      // Raw coords: 1 step threshold
 constexpr int kJoystickMoveStep = 30;
 constexpr int kTouchpadInitIgnoreCount = 0;
-// Raw coordinate multipliers (X: 0-511, Y: 0-30)
-// X: 512 steps, Y: 31 steps → Y needs ~16x more amplification
-constexpr int kXMultiplier = 5;         // X delta * 5 / 10 = 0.5 pixel per step
-constexpr int kYMultiplier = 30;        // Y delta * 30 / 10 = 3 pixels per step
+// Raw coordinate multipliers (X: 0-255, Y: 0-8191)
+// Both axes now have sufficient resolution for smooth movement.
+// X: 256 steps across touchpad width
+// Y: ~8192 steps across touchpad height (12-bit)
+constexpr int kXMultiplier = 10;        // X delta * 10 / 10 = 1 pixel per step
+constexpr int kYMultiplier = 1;         // Y delta * 1 / 10 = 0.1 pixel per step (high res!)
+// Two-finger scroll multiplier
+constexpr int kScrollMultiplier = 1;    // Scroll sensitivity
 
 // Debug Configuration
 constexpr bool kSerialDebug   = true;

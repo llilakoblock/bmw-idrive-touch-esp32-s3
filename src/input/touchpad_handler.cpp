@@ -30,8 +30,54 @@ bool TouchpadHandler::Handle(const InputEvent& event) {
     // Check for finger removed (state indicates touch type).
     if (event.state == protocol::kTouchFingerRemoved) {
         tracking_ = false;
-        ESP_LOGI(kTag, "Touchpad: finger removed");
+        tracking_two_fingers_ = false;
+        ESP_LOGD(kTag, "Touchpad: finger(s) removed");
         return true;
+    }
+
+    // Handle two-finger gesture (scroll)
+    if (event.two_fingers) {
+        if (!tracking_two_fingers_) {
+            // Start two-finger tracking
+            prev_x_ = event.x;
+            prev_y_ = event.y;
+            prev_x2_ = event.x2;
+            prev_y2_ = event.y2;
+            tracking_two_fingers_ = true;
+            tracking_ = false;  // Reset single-finger tracking
+            ESP_LOGD(kTag, "Touchpad: two-finger gesture started");
+            return true;
+        }
+
+        // Calculate average Y movement of both fingers for scrolling
+        int16_t delta_y1 = event.y - prev_y_;
+        int16_t delta_y2 = event.y2 - prev_y2_;
+        int16_t avg_delta_y = (delta_y1 + delta_y2) / 2;
+
+        // Apply threshold
+        if (std::abs(avg_delta_y) >= min_travel_ * 50) {  // Higher threshold for scroll
+            // Convert to scroll (negative = scroll down, positive = scroll up)
+            int8_t scroll = utils::Constrain(
+                avg_delta_y * config::kScrollMultiplier / 100, -127, 127);
+
+            if (scroll != 0) {
+                ESP_LOGD(kTag, "Touchpad scroll: %d (delta_y: %d)", scroll, avg_delta_y);
+                hid_.MouseScroll(scroll);
+            }
+
+            prev_y_ = event.y;
+            prev_y2_ = event.y2;
+        }
+
+        prev_x_ = event.x;
+        prev_x2_ = event.x2;
+        return true;
+    }
+
+    // Single finger - reset two-finger tracking
+    if (tracking_two_fingers_) {
+        tracking_two_fingers_ = false;
+        tracking_ = false;
     }
 
     if (!tracking_) {
@@ -39,7 +85,7 @@ bool TouchpadHandler::Handle(const InputEvent& event) {
         prev_x_ = event.x;
         prev_y_ = event.y;
         tracking_ = true;
-        ESP_LOGI(kTag, "Touchpad: touch started at x=%d, y=%d", event.x, event.y);
+        ESP_LOGD(kTag, "Touchpad: touch started at x=%d, y=%d", event.x, event.y);
         return true;
     }
 
@@ -59,11 +105,11 @@ bool TouchpadHandler::Handle(const InputEvent& event) {
         // Scale movement for better feel.
         int8_t mouse_x = utils::Constrain(
             delta_x * x_multiplier_ / 10, -127, 127);
-        // Y-axis inverted (touchpad Y increases downward, screen Y increases upward).
+        // Y-axis inverted (touchpad Y increases upward, screen Y increases downward).
         int8_t mouse_y = utils::Constrain(
             -delta_y * y_multiplier_ / 10, -127, 127);
 
-        ESP_LOGI(kTag, "Touchpad move: x=%d, y=%d (delta: %d, %d)",
+        ESP_LOGD(kTag, "Touchpad move: x=%d, y=%d (delta: %d, %d)",
                  mouse_x, mouse_y, delta_x, delta_y);
         hid_.MouseMove(mouse_x, mouse_y);
 

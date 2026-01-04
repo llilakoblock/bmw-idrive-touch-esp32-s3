@@ -289,19 +289,28 @@ void IDriveController::HandleTouchpadMessage(const CanMessage& msg) {
         return;
     }
 
-    if (touch_type == protocol::kTouchSingle || touch_type == protocol::kTouchMulti) {
-        // Use RAW coordinates for maximum precision.
-        // X: combine half indicator with raw value to get 0-511 range.
-        // Left half (x_lr=0): 0-255, Right half (x_lr=1): 256-511.
-        uint8_t raw_x = msg.data[1];
-        uint8_t x_lr = msg.data[2] & 0x0F;
-        int16_t combined_x = (x_lr == 1) ? (256 + raw_x) : raw_x;
+    if (touch_type == protocol::kTouchSingle || touch_type == protocol::kTouchMulti ||
+        touch_type == protocol::kTouchTriple || touch_type == protocol::kTouchQuad) {
+        // G-series ZBE4 multi-touch protocol:
+        // Byte 1: Finger 1 X (8-bit, 0-255)
+        // Bytes 2-3: Finger 1 Y (12-bit little-endian, 0-8191)
+        // Byte 4: Touch state
+        // Byte 5: Finger 2 X (8-bit, 0-255)
+        // Bytes 6-7: Finger 2 Y (12-bit little-endian, 0-8191)
 
-        // Y: use raw value directly (0-30 range).
-        int16_t raw_y = msg.data[3];
+        // Finger 1 coordinates
+        event.x = msg.data[1];
+        event.y = msg.data[2] | (static_cast<int16_t>(msg.data[3]) << 8);
 
-        event.x = combined_x;
-        event.y = raw_y;
+        // Check for multi-touch (state 0x00 = two fingers)
+        event.two_fingers = (touch_type == protocol::kTouchMulti);
+
+        if (event.two_fingers) {
+            // Finger 2 coordinates
+            event.x2 = msg.data[5];
+            event.y2 = msg.data[6] | (static_cast<int16_t>(msg.data[7]) << 8);
+        }
+
         DispatchEvent(event);
     }
 }

@@ -77,59 +77,100 @@ G-series ZBE4 touchpad is **POLL-BASED**:
 - Each poll returns current touch state on `0x0BF`
 - Recommended poll interval: **5-20ms** (50-200Hz) for smooth mouse movement
 
-### Touchpad Response Format (0x0BF)
+### Touchpad Response Format (0x0BF) - Multi-Touch Capable
 
 ```
-Byte 0: Counter (increments with each message)
-Byte 1: X coordinate raw (0-255 per half)
-Byte 2: Lower nibble = half indicator (0=left, 1=right)
-        Upper nibble = unknown flags
-Byte 3: Y coordinate raw (0-31)
-Byte 4: Touch type
-Byte 5-7: Reserved (always 0x00)
+┌────────────────────────────────────────────────────────────────────────┐
+│                       8-Byte Touch Message                             │
+├────────┬────────┬────────┬────────┬────────┬────────┬────────┬────────┤
+│ Byte 0 │ Byte 1 │ Byte 2 │ Byte 3 │ Byte 4 │ Byte 5 │ Byte 6 │ Byte 7 │
+├────────┼────────┼────────┼────────┼────────┼────────┼────────┼────────┤
+│ Counter│ F1 X   │ F1 Y-L │ F1 Y-H │ State  │ F2 X   │ F2 Y-L │ F2 Y-H │
+└────────┴────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+
+Byte 0: Sequence counter (low nibble cycles 0-F)
+Byte 1: Finger 1 X coordinate (8-bit)
+Byte 2: Finger 1 Y low byte
+Byte 3: Finger 1 Y high byte
+Byte 4: Touch state
+Byte 5: Finger 2 X coordinate (8-bit, 0x00 if single finger)
+Byte 6: Finger 2 Y low byte (0x00 if single finger)
+Byte 7: Finger 2 Y high byte (0x00 if single finger)
 ```
 
-### Touch Types (byte[4])
+### Touch States (byte[4])
 
-| Value | Meaning |
-|-------|---------|
-| 0x11 | No finger (finger removed) |
-| 0x10 | 1 finger touch |
-| 0x00 | 2 finger touch |
-| 0x1F | 3 finger touch |
-| 0x0F | 4 finger touch |
+| Value | Meaning | Bytes 5-7 |
+|-------|---------|-----------|
+| 0x11 | No finger (released) | 00 00 00 |
+| 0x10 | 1 finger touch | 00 00 00 |
+| 0x00 | 2 fingers touch | Finger 2 data |
+| 0x1F | 3 fingers touch | Finger 2 data |
+| 0x0F | 4 fingers touch | Finger 2 data |
+
+### Multi-Touch Example
+
+```
+Two fingers moving in circles:
+[3E 7A 61 1A 00 D4 71 15]
+ │  │  └──┬──┘ │  │  └──┬──┘
+ │  │     │    │  │     └── F2 Y = 0x1571 (5489)
+ │  │     │    │  └──────── F2 X = 0xD4 (212)
+ │  │     │    └─────────── State = 0x00 (two fingers)
+ │  │     └──────────────── F1 Y = 0x1A61 (6753)
+ │  └────────────────────── F1 X = 0x7A (122)
+ └───────────────────────── Seq = 0x3E
+
+Single finger:
+[34 CB A0 19 10 00 00 00]
+                │  └─────── No Finger 2 data
+                └────────── State = 0x10 (one finger)
+```
 
 ### Coordinate System
 
-**X Coordinate (byte[1] + byte[2]):**
-- Left half (byte[2] & 0x0F == 0): raw 0-255
-- Right half (byte[2] & 0x0F == 1): raw 0-255
-- **Combined range: 0-511** (left half 0-255, right half 256-511)
-- Total resolution: **512 steps**
+**Finger X Coordinate (byte[1] for F1, byte[5] for F2):**
+- Range: **0x00-0xFF** (0-255)
+- 0x00 = left edge
+- 0xFF = right edge
 
-**Y Coordinate (byte[3]):**
-- Raw range: **0-31** (32 steps)
-- 0 = bottom edge
-- 31 = top edge
+**Finger Y Coordinate (bytes[2-3] for F1, bytes[6-7] for F2):**
+- 12-bit value, little-endian
+- Range: approximately **0x000-0x1FFF** (0-8191)
+- Lower values = bottom edge
+- Higher values = top edge
 
-### Raw Coordinate Processing (Recommended)
-
-For maximum precision, use raw coordinates without mapping:
+### Raw Coordinate Processing (Updated for Multi-Touch)
 
 ```cpp
-// Extract raw X with half combination
-uint8_t raw_x = msg.data[1];
-uint8_t x_lr = msg.data[2] & 0x0F;
-int16_t combined_x = (x_lr == 1) ? (256 + raw_x) : raw_x;  // 0-511
+// Finger 1 coordinates
+uint8_t f1_x = msg.data[1];
+uint16_t f1_y = msg.data[2] | (static_cast<uint16_t>(msg.data[3]) << 8);
 
-// Extract raw Y
-int16_t raw_y = msg.data[3];  // 0-31
+// Touch state
+uint8_t state = msg.data[4];
+bool two_fingers = (state == 0x00);
+
+// Finger 2 coordinates (only valid when state == 0x00)
+uint8_t f2_x = msg.data[5];
+uint16_t f2_y = msg.data[6] | (static_cast<uint16_t>(msg.data[7]) << 8);
+
+// Multi-touch gesture detection
+if (two_fingers) {
+    // Calculate pinch/zoom from distance between fingers
+    int16_t dx = f2_x - f1_x;
+    int16_t dy = f2_y - f1_y;
+    float distance = sqrt(dx*dx + dy*dy);
+
+    // Calculate rotation from angle between fingers
+    float angle = atan2(dy, dx);
+}
 ```
 
-**Why raw coordinates?**
-- F-series mapping (map to -128...127) loses 50% X precision
-- For relative mouse movement, only deltas matter
-- Raw deltas preserve full sensor resolution
+**Multi-Touch Use Cases:**
+- Pinch to zoom (distance change between fingers)
+- Two-finger scroll (both fingers moving same direction)
+- Rotation gesture (angle change between fingers)
 
 ---
 
@@ -255,4 +296,5 @@ int8_t mouse_y = -delta_y * kYMultiplier / 10;  // Inverted!
 ---
 
 *Last updated: January 2025*
-*Touchpad protocol fully decoded and working!*
+*Touchpad protocol fully decoded with multi-touch support!*
+*Supports up to 2 simultaneous fingers for gestures.*
