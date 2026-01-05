@@ -18,30 +18,39 @@ bool ButtonHandler::Handle(const InputEvent& event) {
         return false;
     }
 
-    // Map iDrive buttons to Android media keys.
+    // Map iDrive buttons to HID keys.
+    // Native Android keys: Back, Home, AL Phone, AL Music Player
+    // Key Mapper keys: NAV, OPTION, RADIO (obscure codes for custom remapping)
     uint16_t media_key = 0;
 
     switch (event.id) {
         case protocol::kButtonMenu:
-            media_key = hid::android::kMenu;
+            // MENU → Android Home (native)
+            media_key = hid::android::kHome;
             break;
         case protocol::kButtonBack:
+            // BACK → Android Back (native)
             media_key = hid::android::kBack;
             break;
         case protocol::kButtonOption:
-            media_key = hid::media::kPlayPause;
+            // OPTION → Key Mapper custom (for user remapping)
+            media_key = hid::keymapper::kCustom2;
             break;
         case protocol::kButtonRadio:
-            media_key = hid::media::kPrevTrack;
+            // RADIO → Key Mapper custom (for user remapping)
+            media_key = hid::keymapper::kCustom3;
             break;
         case protocol::kButtonCd:
-            media_key = hid::media::kNextTrack;
+            // CD → AL Music Player (native Android)
+            media_key = hid::android::kAlMusicPlayer;
             break;
         case protocol::kButtonNav:
-            media_key = hid::android::kHome;
+            // NAV → Key Mapper custom (for user remapping to Maps/Waze)
+            media_key = hid::keymapper::kCustom1;
             break;
         case protocol::kButtonTel:
-            media_key = hid::android::kSearch;
+            // TEL → AL Phone (native Android dialer)
+            media_key = hid::android::kAlPhone;
             break;
         default:
             return false;
@@ -52,7 +61,7 @@ bool ButtonHandler::Handle(const InputEvent& event) {
     }
 
     if (event.state == protocol::kInputPressed) {
-        ESP_LOGI(kTag, "Button pressed: 0x%02X -> Media key: 0x%04X",
+        ESP_LOGI(kTag, "Button pressed: 0x%02X -> HID key: 0x%04X",
                  event.id, media_key);
         hid_.MediaKeyPress(media_key);
     } else if (event.state == protocol::kInputReleased) {

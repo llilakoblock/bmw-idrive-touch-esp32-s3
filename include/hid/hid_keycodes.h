@@ -112,12 +112,28 @@ constexpr uint16_t kTrebleDown = 0x0155;
 
 namespace android {
 
-constexpr uint16_t kBack = 0x0224;    // AC Back
-constexpr uint16_t kHome = 0x0223;    // AC Home
-constexpr uint16_t kMenu = 0x0040;    // Menu key
-constexpr uint16_t kSearch = 0x0221;  // AC Search
+constexpr uint16_t kBack = 0x0224;        // AC Back - native Android back
+constexpr uint16_t kHome = 0x0223;        // AC Home - native Android home
+constexpr uint16_t kMenu = 0x0040;        // Menu key (legacy)
+constexpr uint16_t kSearch = 0x0221;      // AC Search
+constexpr uint16_t kAlPhone = 0x018B;     // AL Phone - opens dialer
+constexpr uint16_t kAlMusicPlayer = 0x0183;  // AL Music Player - opens music app
 
 }  // namespace android
+
+// =============================================================================
+// Key Mapper Codes (obscure HID codes for custom remapping via Key Mapper app)
+// These codes are intentionally rare so Android ignores them natively,
+// allowing Key Mapper to intercept and remap to any app/action.
+// =============================================================================
+
+namespace keymapper {
+
+constexpr uint16_t kCustom1 = 0x0182;  // AL Programmable Button Config (for NAV)
+constexpr uint16_t kCustom2 = 0x0184;  // AL Consumer Control Config (for OPTION)
+constexpr uint16_t kCustom3 = 0x018D;  // AL Checkbook/Finance (for RADIO)
+
+}  // namespace keymapper
 
 // =============================================================================
 // Mouse Button Definitions

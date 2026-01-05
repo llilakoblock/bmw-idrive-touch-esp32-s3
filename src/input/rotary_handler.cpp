@@ -25,18 +25,13 @@ bool RotaryHandler::Handle(const InputEvent& event) {
 
     int16_t steps = event.delta;
 
-    if (steps > 0) {
-        for (int i = 0; i < steps; ++i) {
-            ESP_LOGI(kTag, "Rotary right - Volume up");
-            hid_.MediaKeyPressAndRelease(hid::media::kVolumeUp);
-            vTaskDelay(pdMS_TO_TICKS(20));
-        }
-    } else if (steps < 0) {
-        for (int i = 0; i < -steps; ++i) {
-            ESP_LOGI(kTag, "Rotary left - Volume down");
-            hid_.MediaKeyPressAndRelease(hid::media::kVolumeDown);
-            vTaskDelay(pdMS_TO_TICKS(20));
-        }
+    // Rotary encoder as mouse scroll wheel.
+    // Volume/track controls are on steering wheel.
+    if (steps != 0) {
+        // Positive = scroll down, Negative = scroll up (natural scrolling)
+        int8_t scroll = static_cast<int8_t>(-steps);  // Invert for natural feel
+        ESP_LOGI(kTag, "Rotary scroll: %d steps -> wheel %d", steps, scroll);
+        hid_.MouseScroll(scroll);
     }
 
     return true;

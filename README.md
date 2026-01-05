@@ -14,7 +14,7 @@
 - [Hardware Requirements](#hardware-requirements)
 - [Wiring Diagram](#wiring-diagram)
 - [Button Mapping](#button-mapping)
-- [Custom Button Remapping (Android)](#custom-button-remapping-android)
+- [Custom Button Remapping (Key Mapper)](#custom-button-remapping-key-mapper)
 - [Software Architecture](#software-architecture)
 - [OTA Firmware Updates](#ota-firmware-updates)
 - [CAN Bus Protocol](#can-bus-protocol)
@@ -63,17 +63,17 @@ This adapter solves the problem by:
 
 | Input | Function | Status |
 |-------|----------|--------|
-| **Rotary Encoder** | Volume Up/Down | ✅ Working |
-| **Rotary Push** | Enter/Select | ✅ Working |
-| **MENU Button** | Android Menu | ✅ Working |
-| **BACK Button** | Android Back | ✅ Working |
-| **NAV Button** | Android Home | ✅ Working |
-| **TEL Button** | Android Search | ✅ Working |
-| **OPTION Button** | Play/Pause | ✅ Working |
-| **RADIO Button** | Previous Track | ✅ Working |
-| **CD Button** | Next Track | ✅ Working |
-| **Joystick** | Mouse movement / Arrow keys | ✅ Working |
-| **Joystick Center** | Mouse click / Enter | ✅ Working |
+| **Rotary Encoder** | Scroll Up/Down | ✅ Native Android |
+| **Rotary Push** | Enter/Select | ✅ Native Android |
+| **MENU Button** | Android Home | ✅ Native Android |
+| **BACK Button** | Android Back | ✅ Native Android |
+| **NAV Button** | Key Mapper (for Navigation app) | ✅ Customizable |
+| **TEL Button** | AL Phone (opens Dialer) | ✅ Native Android |
+| **OPTION Button** | Key Mapper (customizable) | ✅ Customizable |
+| **RADIO Button** | Key Mapper (customizable) | ✅ Customizable |
+| **CD Button** | AL Music Player | ✅ Native Android |
+| **Joystick** | Arrow keys (Up/Down/Left/Right) | ✅ Native Android |
+| **Joystick Center** | Enter key | ✅ Native Android |
 | **Touchpad** | Mouse cursor movement | ✅ Working |
 | **Two-finger scroll** | Scroll wheel emulation | ✅ Working |
 | **Backlight** | Illumination control | ✅ Working |
@@ -262,20 +262,31 @@ Instead of a car head unit, use any Android smartphone or tablet with USB OTG su
 
 ## Button Mapping
 
+The firmware uses a hybrid approach: **native Android HID** for essential functions and **Key Mapper-ready codes** for customizable buttons.
+
+### Mapping Philosophy
+
+| Type | Buttons | Why |
+|------|---------|-----|
+| **Native Android** | MENU, BACK, TEL, CD, Rotary | Essential functions that should "just work" |
+| **Key Mapper** | NAV, OPTION, RADIO | Obscure HID codes for full customization |
+
+### Button Layout
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │                                                     │
 │     [MENU]          [OPTION]          [RADIO]       │
-│    Android           Play/           Previous       │
-│      Menu           Pause             Track         │
+│    Android       🔧 Key Mapper     🔧 Key Mapper    │
+│      Home         (customize)       (customize)     │
 │                                                     │
 │     [BACK]     ╔═══════════════╗     [CD]          │
-│    Android     ║   ↑  Rotary   ║    Next           │
-│      Back      ║ ← ● → Volume  ║    Track          │
+│    Android     ║   ↑  Rotary   ║   AL Music        │
+│      Back      ║ ← ● → Scroll  ║    Player         │
 │                ║   ↓           ║                    │
 │     [NAV]      ╚═══════════════╝     [TEL]         │
-│    Android          Push:           Android         │
-│      Home          Enter            Search          │
+│  🔧 Key Mapper      Push:          AL Phone         │
+│   (Navigation)     Enter          (Dialer)          │
 │                                                     │
 │            ┌─────────────────────┐                  │
 │            │      Touchpad       │                  │
@@ -283,19 +294,34 @@ Instead of a car head unit, use any Android smartphone or tablet with USB OTG su
 │            │   (Mouse Cursor)    │                  │
 │            └─────────────────────┘                  │
 │                                                     │
-│     Joystick: Mouse Move / Arrow Keys               │
-│     Center Press: Click / Enter                     │
+│     Joystick: Arrow Keys (↑↓←→)                     │
+│     Center Press: Enter                             │
 │                                                     │
+│   ✅ = Native Android    🔧 = Requires Key Mapper   │
 └─────────────────────────────────────────────────────┘
 ```
 
-## Custom Button Remapping (Android)
+### HID Codes Reference
 
-The iDrive buttons send standard USB HID media keys that Android recognizes. While the default mapping (see table above) works out of the box, you can customize what each button does using the **Key Mapper** app.
+| Button | HID Code | Type | Android Behavior |
+|--------|----------|------|------------------|
+| MENU | 0x0223 | Native | Home screen |
+| BACK | 0x0224 | Native | Back navigation |
+| TEL | 0x018B | Native | Opens Phone/Dialer |
+| CD | 0x0183 | Native | Opens Music Player |
+| NAV | 0x0182 | Key Mapper | No action (remap to Maps) |
+| OPTION | 0x0184 | Key Mapper | No action (remap to anything) |
+| RADIO | 0x018D | Key Mapper | No action (remap to anything) |
 
-### Why Key Mapper?
+## Custom Button Remapping (Key Mapper)
 
-USB HID standard doesn't have keycodes for "Open Settings" or "Launch Navigation" - it only defines generic actions like Play/Pause, Home, Back, etc. Key Mapper intercepts these key presses and lets you trigger any action: open apps, toggle settings, run shortcuts, and more.
+Three buttons (NAV, OPTION, RADIO) send obscure HID codes that Android ignores by default. This is **intentional** - it allows you to fully customize their behavior using the **Key Mapper** app.
+
+### Why This Design?
+
+1. **Native buttons** (MENU, BACK, TEL, CD) work immediately without any setup
+2. **Key Mapper buttons** (NAV, OPTION, RADIO) do nothing until configured - giving you full control
+3. No conflicts - obscure HID codes won't interfere with any Android app
 
 ### Installation
 
@@ -318,17 +344,15 @@ USB HID standard doesn't have keycodes for "Open Settings" or "Launch Navigation
    - Select Action → "App" → choose the app you want to launch
 4. **Enable the mapping** - toggle it on
 
-### Example Mappings
+### Recommended Mappings
 
-Here are useful remapping ideas for iDrive buttons:
+Only 3 buttons need Key Mapper configuration:
 
-| iDrive Button | Default HID | Suggested Remap | Use Case |
-|---------------|-------------|-----------------|----------|
-| **TEL** | Search | Phone/Dialer app | Quick calling |
-| **NAV** | Home | Google Maps / Waze | Navigation |
-| **OPTION** | Play/Pause | Settings | Quick access |
-| **RADIO** | Prev Track | Music app (Spotify) | Launch player |
-| **CD** | Next Track | Android Auto | Toggle AA mode |
+| iDrive Button | Suggested App | Use Case |
+|---------------|---------------|----------|
+| **NAV** | Google Maps / Waze | One-touch navigation |
+| **OPTION** | Settings / Android Auto | Quick access |
+| **RADIO** | Spotify / YouTube Music | Launch music player |
 
 ### Advanced Key Mapper Features
 
@@ -338,21 +362,17 @@ Here are useful remapping ideas for iDrive buttons:
 - **Key sequences** - combine multiple buttons
 - **System actions** - toggle WiFi, Bluetooth, flashlight, etc.
 
-### iDrive HID Key Codes Reference
+### Key Mapper HID Codes
 
-When recording keys in Key Mapper, you'll see these codes:
+When recording in Key Mapper, only these 3 buttons will be detected (others are handled natively):
 
-| Button | HID Usage Code | Key Mapper Shows |
-|--------|---------------|------------------|
-| MENU | 0x0040 | "Menu" |
-| BACK | 0x0224 | "AC Back" |
-| NAV | 0x0223 | "AC Home" |
-| TEL | 0x0221 | "AC Search" |
-| OPTION | 0x00CD | "Play/Pause" |
-| RADIO | 0x00B6 | "Scan Previous Track" |
-| CD | 0x00B5 | "Scan Next Track" |
+| Button | HID Code | Key Mapper Shows |
+|--------|----------|------------------|
+| NAV | 0x0182 | "AL Programmable Button Configuration" |
+| OPTION | 0x0184 | "AL Consumer Control Configuration" |
+| RADIO | 0x018D | "AL Checkbook/Finance" |
 
-> **Tip**: If a button doesn't register in Key Mapper, try enabling "Log key events" in Key Mapper settings to debug.
+> **Tip**: If a button doesn't register, enable "Log key events" in Key Mapper settings to debug.
 
 ## Software Architecture
 

@@ -42,7 +42,7 @@ extern "C" void app_main() {
 
     // Configuration.
     idrive::Config config {
-        .joystick_as_mouse  = true,
+        .joystick_as_mouse  = false,  // Arrow keys mode (volume/tracks on steering wheel)
         .light_brightness   = 255,
         .poll_interval_ms   = idrive::config::kPollIntervalMs,
         .light_keepalive_ms = idrive::config::kLightKeepaliveMs,
