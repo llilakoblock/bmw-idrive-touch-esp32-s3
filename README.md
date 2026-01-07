@@ -63,8 +63,7 @@ This adapter solves the problem by:
 
 | Input | Function | Status |
 |-------|----------|--------|
-| **Rotary Encoder** | Scroll Up/Down | ✅ Native Android |
-| **Rotary Push** | Enter/Select | ✅ Native Android |
+| **Rotary Encoder** | Mouse Scroll Wheel | ✅ Native Android |
 | **MENU Button** | Android Home | ✅ Native Android |
 | **BACK Button** | Android Back | ✅ Native Android |
 | **NAV Button** | Key Mapper (for Navigation app) | ✅ Customizable |
@@ -73,9 +72,12 @@ This adapter solves the problem by:
 | **RADIO Button** | Key Mapper (customizable) | ✅ Customizable |
 | **CD Button** | AL Music Player | ✅ Native Android |
 | **Joystick** | Arrow keys (Up/Down/Left/Right) | ✅ Native Android |
-| **Joystick Center** | Enter key | ✅ Native Android |
+| **Joystick Center / Rotary Push** | Enter key | ✅ Native Android |
 | **Touchpad** | Mouse cursor movement | ✅ Working |
-| **Two-finger scroll** | Scroll wheel emulation | ✅ Working |
+| **Touchpad Tap** | Left Click | ✅ Working |
+| **Tap-Tap-Hold** | Drag (select text, move items) | ✅ Working |
+| **Two-finger Tap** | Right Click (context menu) | ✅ Working |
+| **Two-finger Scroll** | Scroll wheel emulation | ✅ Working |
 | **Backlight** | Illumination control | ✅ Working |
 | **OTA Updates** | WiFi firmware upload | ✅ Working |
 
@@ -85,8 +87,23 @@ This adapter solves the problem by:
 |-----------|-------|
 | X Resolution | 512 steps (9-bit) |
 | Y Resolution | 512 steps (9-bit) |
-| Poll Rate | 200 Hz (5ms) |
+| Poll Rate | ~20 Hz (50ms main loop) |
 | Multi-touch | Up to 2 fingers with coordinates |
+
+### Touchpad Gestures (Laptop-style)
+
+| Gesture | Action | Description |
+|---------|--------|-------------|
+| **Move finger** | Mouse cursor | Move cursor on screen |
+| **Single tap** | Left click | Quick tap = click at cursor position |
+| **Tap-tap-hold** | Drag | Tap, then tap and hold = drag mode (select text, move icons) |
+| **Two-finger tap** | Right click | Tap with two fingers = context menu |
+| **Two-finger scroll** | Scroll | Swipe up/down with two fingers |
+
+> **Timing configuration** in `include/config/config.h`:
+> - `kTapMaxDurationMs` (200ms) - max touch duration for tap
+> - `kDoubleTapWindowMs` (300ms) - window for second tap
+> - `kTapMaxMovement` (20) - max movement during tap
 
 ## Hardware Requirements
 
@@ -283,10 +300,10 @@ The firmware uses a hybrid approach: **native Android HID** for essential functi
 │     [BACK]     ╔═══════════════╗     [CD]          │
 │    Android     ║   ↑  Rotary   ║   AL Music        │
 │      Back      ║ ← ● → Scroll  ║    Player         │
-│                ║   ↓           ║                    │
+│                ║   ↓  Wheel    ║                    │
 │     [NAV]      ╚═══════════════╝     [TEL]         │
-│  🔧 Key Mapper      Push:          AL Phone         │
-│   (Navigation)     Enter          (Dialer)          │
+│  🔧 Key Mapper                     AL Phone         │
+│   (Navigation)                    (Dialer)          │
 │                                                     │
 │            ┌─────────────────────┐                  │
 │            │      Touchpad       │                  │
@@ -294,8 +311,8 @@ The firmware uses a hybrid approach: **native Android HID** for essential functi
 │            │   (Mouse Cursor)    │                  │
 │            └─────────────────────┘                  │
 │                                                     │
-│     Joystick: Arrow Keys (↑↓←→)                     │
-│     Center Press: Enter                             │
+│     Joystick/Rotary: Arrow Keys (↑↓←→)              │
+│     Center Press (Push): Enter key                  │
 │                                                     │
 │   ✅ = Native Android    🔧 = Requires Key Mapper   │
 └─────────────────────────────────────────────────────┘
@@ -395,13 +412,14 @@ bmw-idrive-touch-esp32-s3/
 │   │   ├── input_handler.h        # InputHandler base class & InputEvent
 │   │   ├── button_handler.h       # ButtonHandler - media key mapping
 │   │   ├── joystick_handler.h     # JoystickHandler - mouse/arrows
-│   │   ├── rotary_handler.h       # RotaryHandler - volume control
+│   │   ├── rotary_handler.h       # RotaryHandler - mouse scroll
 │   │   └── touchpad_handler.h     # TouchpadHandler - mouse cursor
 │   ├── ota/
 │   │   ├── ota_config.h           # OTA configuration (WiFi AP, etc.)
 │   │   ├── ota_manager.h          # OTA orchestrator
 │   │   ├── ota_trigger.h          # Button combo detection
-│   │   └── web_server.h           # HTTP upload server
+│   │   ├── web_server.h           # HTTP upload server
+│   │   └── wifi_ap.h              # WiFi AP management
 │   ├── utils/
 │   │   └── utils.h                # Utility functions (GetMillis, etc.)
 │   └── tusb_config.h              # TinyUSB configuration
@@ -413,7 +431,8 @@ bmw-idrive-touch-esp32-s3/
 │   ├── hid/usb_hid_device.cpp
 │   ├── idrive/idrive_controller.cpp
 │   ├── input/*.cpp
-│   └── ota/*.cpp                  # OTA implementation
+│   ├── ota/*.cpp                  # OTA implementation
+│   └── utils/utils.cpp            # Utility functions
 ├── docs/
 │   └── BMW_iDrive_CAN_Protocol_Research.md  # Detailed protocol documentation
 ├── partitions_ota.csv             # 8MB flash partition table
@@ -440,7 +459,7 @@ bmw-idrive-touch-esp32-s3/
               ▼                              ▼                              ▼
      ┌──────────────────┐         ┌──────────────────┐          ┌──────────────────┐
      │  ButtonHandler   │         │  RotaryHandler   │          │  TouchpadHandler │
-     │  JoystickHandler │         │  (Volume +/-)    │          │  (Mouse Move)    │
+     │  JoystickHandler │         │  (Mouse Scroll)  │          │  (Mouse Move)    │
      └────────┬─────────┘         └────────┬─────────┘          └────────┬─────────┘
               │                            │                             │
               └────────────────────────────┴─────────────────────────────┘
@@ -463,7 +482,7 @@ bmw-idrive-touch-esp32-s3/
 ```cpp
 idrive::CanBus can(GPIO_NUM_4, GPIO_NUM_5);
 idrive::UsbHidDevice& hid = idrive::GetUsbHidDevice();
-idrive::Config config{ .joystick_as_mouse = true };
+idrive::Config config{ .joystick_as_mouse = false };  // Arrow keys mode
 idrive::IDriveController controller(can, hid, config);
 ```
 
@@ -506,7 +525,7 @@ if (xSemaphoreTake(mutex_, portMAX_DELAY) == pdTRUE) {
          ┌─────────────────────────────────────────┐
          │         START TOUCHPAD POLLING          │
          │                                         │
-         │  Send poll to 0x317 every 5ms           │
+         │  Send poll to 0x317 every 50ms          │
          │  (G-series specific!)                   │
          └────────────────────┬────────────────────┘
                               │
@@ -521,12 +540,12 @@ if (xSemaphoreTake(mutex_, portMAX_DELAY) == pdTRUE) {
          │                                         │
          │  Process inputs:                        │
          │  - Buttons (0x267) → Media keys         │
-         │  - Rotary (0x264) → Volume              │
+         │  - Rotary (0x264) → Scroll              │
          │  - Touchpad (0x0BF) → Mouse             │
          │                                         │
          │  Periodic tasks:                        │
-         │  - Touchpad poll (0x317) every 5ms      │
-         │  - Keepalive (0x501) every 500ms        │
+         │  - Touchpad poll (0x317) every 50ms     │
+         │  - Keepalive (0x501) every 50ms         │
          │  - Light (0x202) every 10s              │
          └─────────────────────────────────────────┘
 ```
@@ -602,6 +621,8 @@ The adapter supports Over-The-Air firmware updates via WiFi, allowing you to upd
 ├────────────┼─────────────────────────────────────────────────┤
 │  0x00F000  │  OTA data (0x2000)                              │
 ├────────────┼─────────────────────────────────────────────────┤
+│  0x011000  │  PHY init data (0x1000)                         │
+├────────────┼─────────────────────────────────────────────────┤
 │  0x020000  │  ota_0 - Main firmware (~3.9MB)                 │
 ├────────────┼─────────────────────────────────────────────────┤
 │  0x410000  │  ota_1 - Backup firmware (~3.9MB)               │
@@ -635,7 +656,7 @@ This controller uses **K-CAN4** at **500 kbps**. Key difference from F-series: t
 ```cpp
 // Correct touchpad poll message
 uint8_t data[8] = {0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-can.Send(0x317, data, 8);  // Send every 5ms for 200Hz polling
+can.Send(0x317, data, 8);  // Send every 50ms (main loop rate)
 ```
 
 ### Touchpad Response Format (0x0BF)
@@ -732,8 +753,10 @@ All configuration is in `include/config/config.h`.
 ### Timing Configuration
 
 ```cpp
-constexpr uint32_t kPollIntervalMs = 5;        // Touchpad poll rate (200Hz)
-constexpr uint32_t kLightKeepaliveMs = 10000;  // Backlight refresh
+// Main loop runs at 50ms - determines effective touchpad poll rate
+// To increase touchpad responsiveness, reduce vTaskDelay in main.cpp
+constexpr uint32_t kPollIntervalMs = 5;         // Min interval between polls
+constexpr uint32_t kLightKeepaliveMs = 10000;   // Backlight refresh
 constexpr uint32_t kControllerCooldownMs = 750; // Init delay
 ```
 
@@ -787,7 +810,7 @@ int8_t mouse_y = -delta_y * y_multiplier_ / 10;  // Negative = inverted
 
 ### Movement is Choppy
 
-1. Increase poll rate: `kPollIntervalMs = 5` (200Hz)
+1. Reduce main loop delay in `src/main.cpp`: `vTaskDelay(pdMS_TO_TICKS(5))` for faster polling
 2. Adjust multipliers for smoother feel
 3. Check for CAN bus errors causing dropped messages
 
