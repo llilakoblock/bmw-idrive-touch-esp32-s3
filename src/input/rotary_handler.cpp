@@ -6,15 +6,17 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
 #include "hid/hid_keycodes.h"
 
 namespace idrive {
 
 namespace {
-const char* kTag = "ROTARY";
+const char *kTag = "ROTARY";
 }
 
-bool RotaryHandler::Handle(const InputEvent& event) {
+bool RotaryHandler::Handle(const InputEvent &event)
+{
     if (event.type != InputEvent::Type::Rotary) {
         return false;
     }

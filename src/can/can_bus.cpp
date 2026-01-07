@@ -11,30 +11,27 @@
 namespace idrive {
 
 namespace {
-const char* kTag = "CAN_BUS";
+const char *kTag = "CAN_BUS";
 }
 
-CanBus::CanBus(gpio_num_t rx_pin, gpio_num_t tx_pin)
-    : rx_pin_(rx_pin), tx_pin_(tx_pin) {}
+CanBus::CanBus(gpio_num_t rx_pin, gpio_num_t tx_pin) : rx_pin_(rx_pin), tx_pin_(tx_pin) {}
 
-bool CanBus::Init(uint32_t baudrate) {
+bool CanBus::Init(uint32_t baudrate)
+{
     ESP_LOGI(kTag, "Initializing CAN bus at %lu bps", baudrate);
 
     twai_general_config_t general_config = {};
-    general_config.mode = TWAI_MODE_NORMAL;
-    general_config.tx_io = tx_pin_;
-    general_config.rx_io = rx_pin_;
-    general_config.clkout_io = GPIO_NUM_NC;
-    general_config.bus_off_io = GPIO_NUM_NC;
-    general_config.tx_queue_len = 10;
-    general_config.rx_queue_len = 20;  // Larger RX buffer for high traffic
-    general_config.alerts_enabled = TWAI_ALERT_RX_DATA |
-                                    TWAI_ALERT_ERR_PASS |
-                                    TWAI_ALERT_BUS_OFF |
-                                    TWAI_ALERT_TX_FAILED |
-                                    TWAI_ALERT_RX_QUEUE_FULL;
+    general_config.mode                  = TWAI_MODE_NORMAL;
+    general_config.tx_io                 = tx_pin_;
+    general_config.rx_io                 = rx_pin_;
+    general_config.clkout_io             = GPIO_NUM_NC;
+    general_config.bus_off_io            = GPIO_NUM_NC;
+    general_config.tx_queue_len          = 10;
+    general_config.rx_queue_len          = 20;  // Larger RX buffer for high traffic
+    general_config.alerts_enabled = TWAI_ALERT_RX_DATA | TWAI_ALERT_ERR_PASS | TWAI_ALERT_BUS_OFF |
+                                    TWAI_ALERT_TX_FAILED | TWAI_ALERT_RX_QUEUE_FULL;
     general_config.clkout_divider = 0;
-    general_config.intr_flags = ESP_INTR_FLAG_LEVEL1;
+    general_config.intr_flags     = ESP_INTR_FLAG_LEVEL1;
 
     // Configure timing based on baudrate.
     twai_timing_config_t timing_config;
@@ -58,11 +55,9 @@ bool CanBus::Init(uint32_t baudrate) {
 
     twai_filter_config_t filter_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
-    esp_err_t err = twai_driver_install(&general_config, &timing_config,
-                                        &filter_config);
+    esp_err_t err = twai_driver_install(&general_config, &timing_config, &filter_config);
     if (err != ESP_OK) {
-        ESP_LOGE(kTag, "TWAI driver installation failed: %s",
-                 esp_err_to_name(err));
+        ESP_LOGE(kTag, "TWAI driver installation failed: %s", esp_err_to_name(err));
         return false;
     }
 
@@ -80,16 +75,16 @@ bool CanBus::Init(uint32_t baudrate) {
     return true;
 }
 
-bool CanBus::Send(uint32_t id, const uint8_t* data, uint8_t length,
-                  bool extended) {
+bool CanBus::Send(uint32_t id, const uint8_t *data, uint8_t length, bool extended)
+{
     if (!initialized_) {
         ESP_LOGW(kTag, "CAN bus not initialized");
         return false;
     }
 
-    twai_message_t message = {};
-    message.identifier = id;
-    message.extd = extended ? 1 : 0;
+    twai_message_t message   = {};
+    message.identifier       = id;
+    message.extd             = extended ? 1 : 0;
     message.data_length_code = length;
 
     for (int i = 0; i < length && i < 8; ++i) {
@@ -105,16 +100,20 @@ bool CanBus::Send(uint32_t id, const uint8_t* data, uint8_t length,
     return true;
 }
 
-bool CanBus::Send(const CanMessage& message) {
+bool CanBus::Send(const CanMessage &message)
+{
     return Send(message.id, message.data, message.length, message.extended);
 }
 
-void CanBus::SetCallback(MessageCallback callback) {
+void CanBus::SetCallback(MessageCallback callback)
+{
     callback_ = std::move(callback);
 }
 
-void CanBus::ProcessAlerts() {
-    if (!initialized_) return;
+void CanBus::ProcessAlerts()
+{
+    if (!initialized_)
+        return;
 
     uint32_t alerts;
     if (twai_read_alerts(&alerts, 0) == ESP_OK && alerts != 0) {
@@ -124,7 +123,8 @@ void CanBus::ProcessAlerts() {
     ReceiveMessages();
 }
 
-void CanBus::HandleAlerts(uint32_t alerts) {
+void CanBus::HandleAlerts(uint32_t alerts)
+{
     if (alerts & TWAI_ALERT_ERR_PASS) {
         ESP_LOGW(kTag, "CAN: Error passive state");
     }
@@ -144,14 +144,15 @@ void CanBus::HandleAlerts(uint32_t alerts) {
     }
 }
 
-void CanBus::ReceiveMessages() {
+void CanBus::ReceiveMessages()
+{
     twai_message_t twai_msg;
 
     while (twai_receive(&twai_msg, 0) == ESP_OK) {
         if (callback_) {
             CanMessage msg;
-            msg.id = twai_msg.identifier;
-            msg.length = twai_msg.data_length_code;
+            msg.id       = twai_msg.identifier;
+            msg.length   = twai_msg.data_length_code;
             msg.extended = twai_msg.extd;
 
             for (int i = 0; i < msg.length && i < 8; ++i) {

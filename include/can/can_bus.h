@@ -17,10 +17,10 @@ namespace idrive {
 // =============================================================================
 
 struct CanMessage {
-    uint32_t id = 0;
-    uint8_t data[8] = {0};
-    uint8_t length = 0;
-    bool extended = false;
+    uint32_t id       = 0;
+    uint8_t  data[8]  = {0};
+    uint8_t  length   = 0;
+    bool     extended = false;
 };
 
 // =============================================================================
@@ -28,8 +28,8 @@ struct CanMessage {
 // =============================================================================
 
 class CanBus {
-public:
-    using MessageCallback = std::function<void(const CanMessage&)>;
+   public:
+    using MessageCallback = std::function<void(const CanMessage &)>;
 
     // Constructor with configurable pins.
     CanBus(gpio_num_t rx_pin = GPIO_NUM_4, gpio_num_t tx_pin = GPIO_NUM_5);
@@ -38,11 +38,10 @@ public:
     bool Init(uint32_t baudrate = 500000);
 
     // Send a CAN message.
-    bool Send(uint32_t id, const uint8_t* data, uint8_t length,
-              bool extended = false);
+    bool Send(uint32_t id, const uint8_t *data, uint8_t length, bool extended = false);
 
     // Send a CAN message using CanMessage struct.
-    bool Send(const CanMessage& message);
+    bool Send(const CanMessage &message);
 
     // Set callback for received messages.
     void SetCallback(MessageCallback callback);
@@ -54,11 +53,11 @@ public:
     // Check if CAN bus is initialized.
     bool IsInitialized() const { return initialized_; }
 
-private:
-    gpio_num_t rx_pin_;
-    gpio_num_t tx_pin_;
+   private:
+    gpio_num_t      rx_pin_;
+    gpio_num_t      tx_pin_;
     MessageCallback callback_;
-    bool initialized_ = false;
+    bool            initialized_ = false;
 
     void HandleAlerts(uint32_t alerts);
     void ReceiveMessages();

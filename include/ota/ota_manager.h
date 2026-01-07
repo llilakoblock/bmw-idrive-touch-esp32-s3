@@ -12,7 +12,7 @@
 namespace idrive::ota {
 
 class OtaManager {
-public:
+   public:
     OtaManager();
 
     // Initialize OTA subsystem (sets up trigger detection).
@@ -31,11 +31,11 @@ public:
     bool IsOtaModeActive() const { return ota_mode_active_; }
 
     // Get trigger for integration with IDriveController.
-    OtaTrigger& GetTrigger() { return trigger_; }
+    OtaTrigger &GetTrigger() { return trigger_; }
 
-private:
-    WifiAp wifi_;
-    WebServer server_;
+   private:
+    WifiAp     wifi_;
+    WebServer  server_;
     OtaTrigger trigger_;
 
     bool ota_mode_active_ = false;

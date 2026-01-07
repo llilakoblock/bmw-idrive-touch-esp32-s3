@@ -15,7 +15,7 @@ namespace idrive::ota {
 using OtaCompleteCallback = std::function<void(bool success)>;
 
 class WebServer {
-public:
+   public:
     // Start HTTP server.
     bool Start();
 
@@ -28,14 +28,14 @@ public:
     // Check if server is running.
     bool IsRunning() const { return server_ != nullptr; }
 
-private:
-    httpd_handle_t server_ = nullptr;
+   private:
+    httpd_handle_t             server_ = nullptr;
     static OtaCompleteCallback ota_complete_callback_;
 
     // HTTP handlers (static for ESP-IDF C callback).
-    static esp_err_t HandleRoot(httpd_req_t* req);
-    static esp_err_t HandleUpload(httpd_req_t* req);
-    static esp_err_t HandleReboot(httpd_req_t* req);
+    static esp_err_t HandleRoot(httpd_req_t *req);
+    static esp_err_t HandleUpload(httpd_req_t *req);
+    static esp_err_t HandleReboot(httpd_req_t *req);
 };
 
 }  // namespace idrive::ota

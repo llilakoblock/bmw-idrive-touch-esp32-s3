@@ -10,15 +10,15 @@
 namespace idrive {
 
 class RotaryHandler : public InputHandler {
-public:
+   public:
     using InputHandler::InputHandler;
 
-    bool Handle(const InputEvent& event) override;
+    bool Handle(const InputEvent &event) override;
 
     void SetEnabled(bool enabled) { enabled_ = enabled; }
     bool IsEnabled() const { return enabled_; }
 
-private:
+   private:
     bool enabled_ = true;
 };
 

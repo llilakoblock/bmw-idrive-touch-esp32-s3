@@ -5,38 +5,42 @@
 
 #include <cmath>
 
-#include "config/config.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
+#include "config/config.h"
 #include "hid/hid_keycodes.h"
 #include "utils/utils.h"
 
 namespace idrive {
 
 namespace {
-const char* kTag = "TOUCHPAD";
+const char *kTag = "TOUCHPAD";
 }
 
-TouchpadHandler::TouchpadHandler(UsbHidDevice& hid, int min_travel,
-                                 int x_multiplier, int y_multiplier)
+TouchpadHandler::TouchpadHandler(UsbHidDevice &hid, int min_travel, int x_multiplier,
+                                 int y_multiplier)
     : InputHandler(hid),
       min_travel_(min_travel),
       x_multiplier_(x_multiplier),
-      y_multiplier_(y_multiplier) {}
+      y_multiplier_(y_multiplier)
+{}
 
-uint32_t TouchpadHandler::GetMillis() const {
+uint32_t TouchpadHandler::GetMillis() const
+{
     return xTaskGetTickCount() * portTICK_PERIOD_MS;
 }
 
-void TouchpadHandler::HandleFingerDown(const InputEvent& event) {
+void TouchpadHandler::HandleFingerDown(const InputEvent &event)
+{
     uint32_t now = GetMillis();
 
     // Record touch start
     touch_start_time_ = now;
-    touch_start_x_ = event.x;
-    touch_start_y_ = event.y;
-    touch_moved_ = false;
+    touch_start_x_    = event.x;
+    touch_start_y_    = event.y;
+    touch_moved_      = false;
 
     // Check if this is the second tap in a double-tap sequence
     if (tap_state_ == TapState::WaitingForSecondTap) {
@@ -52,8 +56,9 @@ void TouchpadHandler::HandleFingerDown(const InputEvent& event) {
     }
 }
 
-void TouchpadHandler::HandleFingerUp(const InputEvent& event) {
-    uint32_t now = GetMillis();
+void TouchpadHandler::HandleFingerUp(const InputEvent &event)
+{
+    uint32_t now            = GetMillis();
     uint32_t touch_duration = now - touch_start_time_;
 
     // Handle drag release
@@ -70,7 +75,7 @@ void TouchpadHandler::HandleFingerUp(const InputEvent& event) {
     if (is_tap) {
         if (tap_state_ == TapState::Idle) {
             // First tap - wait for possible second tap
-            tap_state_ = TapState::WaitingForSecondTap;
+            tap_state_     = TapState::WaitingForSecondTap;
             last_tap_time_ = now;
             ESP_LOGD(kTag, "Single tap detected, waiting for second tap...");
 
@@ -91,12 +96,14 @@ void TouchpadHandler::HandleFingerUp(const InputEvent& event) {
     }
 }
 
-void TouchpadHandler::HandleTwoFingerDown(const InputEvent& event) {
-    two_finger_start_time_ = GetMillis();
+void TouchpadHandler::HandleTwoFingerDown(const InputEvent &event)
+{
+    two_finger_start_time_    = GetMillis();
     two_finger_tap_candidate_ = true;
 }
 
-void TouchpadHandler::HandleTwoFingerUp() {
+void TouchpadHandler::HandleTwoFingerUp()
+{
     if (!two_finger_tap_candidate_) {
         return;
     }
@@ -112,7 +119,8 @@ void TouchpadHandler::HandleTwoFingerUp() {
     two_finger_tap_candidate_ = false;
 }
 
-bool TouchpadHandler::Handle(const InputEvent& event) {
+bool TouchpadHandler::Handle(const InputEvent &event)
+{
     if (event.type != InputEvent::Type::Touchpad) {
         return false;
     }
@@ -128,7 +136,7 @@ bool TouchpadHandler::Handle(const InputEvent& event) {
             HandleFingerUp(event);
         }
 
-        tracking_ = false;
+        tracking_             = false;
         tracking_two_fingers_ = false;
         ESP_LOGD(kTag, "Touchpad: finger(s) removed");
         return true;
@@ -140,12 +148,12 @@ bool TouchpadHandler::Handle(const InputEvent& event) {
     if (event.two_fingers) {
         if (!tracking_two_fingers_) {
             // Start two-finger tracking
-            prev_x_ = event.x;
-            prev_y_ = event.y;
-            prev_x2_ = event.x2;
-            prev_y2_ = event.y2;
+            prev_x_               = event.x;
+            prev_y_               = event.y;
+            prev_x2_              = event.x2;
+            prev_y2_              = event.y2;
             tracking_two_fingers_ = true;
-            tracking_ = false;
+            tracking_             = false;
 
             HandleTwoFingerDown(event);
             ESP_LOGD(kTag, "Touchpad: two-finger gesture started");
@@ -153,8 +161,8 @@ bool TouchpadHandler::Handle(const InputEvent& event) {
         }
 
         // Calculate average Y movement of both fingers for scrolling
-        int16_t delta_y1 = event.y - prev_y_;
-        int16_t delta_y2 = event.y2 - prev_y2_;
+        int16_t delta_y1    = event.y - prev_y_;
+        int16_t delta_y2    = event.y2 - prev_y2_;
         int16_t avg_delta_y = (delta_y1 + delta_y2) / 2;
 
         // If significant movement, it's a scroll, not a tap
@@ -162,19 +170,19 @@ bool TouchpadHandler::Handle(const InputEvent& event) {
             two_finger_tap_candidate_ = false;  // Cancel tap candidate
 
             // Convert to scroll (negative = scroll down, positive = scroll up)
-            int8_t scroll = utils::Constrain(
-                avg_delta_y * config::kScrollMultiplier / 10, -127, 127);
+            int8_t scroll =
+                utils::Constrain(avg_delta_y * config::kScrollMultiplier / 10, -127, 127);
 
             if (scroll != 0) {
                 ESP_LOGD(kTag, "Touchpad scroll: %d", scroll);
                 hid_.MouseScroll(scroll);
             }
 
-            prev_y_ = event.y;
+            prev_y_  = event.y;
             prev_y2_ = event.y2;
         }
 
-        prev_x_ = event.x;
+        prev_x_  = event.x;
         prev_x2_ = event.x2;
         return true;
     }
@@ -184,15 +192,15 @@ bool TouchpadHandler::Handle(const InputEvent& event) {
     // =========================================================================
     if (tracking_two_fingers_) {
         tracking_two_fingers_ = false;
-        tracking_ = false;
+        tracking_             = false;
     }
 
     // =========================================================================
     // Single finger - first touch
     // =========================================================================
     if (!tracking_) {
-        prev_x_ = event.x;
-        prev_y_ = event.y;
+        prev_x_   = event.x;
+        prev_y_   = event.y;
         tracking_ = true;
 
         HandleFingerDown(event);
@@ -228,11 +236,9 @@ bool TouchpadHandler::Handle(const InputEvent& event) {
 
     if (delta_x != 0 || delta_y != 0) {
         // Scale movement for better feel
-        int8_t mouse_x = utils::Constrain(
-            delta_x * x_multiplier_ / 10, -127, 127);
+        int8_t mouse_x = utils::Constrain(delta_x * x_multiplier_ / 10, -127, 127);
         // Y-axis inverted (touchpad Y increases upward, screen Y increases downward)
-        int8_t mouse_y = utils::Constrain(
-            -delta_y * y_multiplier_ / 10, -127, 127);
+        int8_t mouse_y = utils::Constrain(-delta_y * y_multiplier_ / 10, -127, 127);
 
         ESP_LOGD(kTag, "Touchpad move: x=%d, y=%d", mouse_x, mouse_y);
         hid_.MouseMove(mouse_x, mouse_y);

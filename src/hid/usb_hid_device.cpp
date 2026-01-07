@@ -5,23 +5,24 @@
 
 #include <cstring>
 
-#include "class/hid/hid_device.h"
-#include "config/config.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
+#include "class/hid/hid_device.h"
+#include "config/config.h"
 #include "tinyusb.h"
 
 namespace idrive {
 
 namespace {
 
-const char* kTag = "USB_HID";
+const char *kTag = "USB_HID";
 
 // Report IDs for different HID functions.
 enum ReportId {
     kReportIdKeyboard = 1,
-    kReportIdMouse = 2,
+    kReportIdMouse    = 2,
     kReportIdConsumer = 3,
 };
 
@@ -34,17 +35,17 @@ const uint8_t kHidReportDescriptor[] = {
 
 // USB configuration descriptor.
 const uint8_t kHidConfigurationDescriptor[] = {
-    TUD_CONFIG_DESCRIPTOR(1, 1, 0, TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN, 0,
-                          100),
+    TUD_CONFIG_DESCRIPTOR(1, 1, 0, TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN, 0, 100),
     TUD_HID_DESCRIPTOR(0, 0, false, sizeof(kHidReportDescriptor), 0x81, 16, 10),
 };
 
 // Global instance for TinyUSB callbacks.
-UsbHidDevice* g_usb_hid_instance = nullptr;
+UsbHidDevice *g_usb_hid_instance = nullptr;
 
 // USB device task.
-void UsbDeviceTask(void* arg) {
-    (void)arg;
+void UsbDeviceTask(void *arg)
+{
+    (void) arg;
     while (true) {
         tud_task();
         vTaskDelay(pdMS_TO_TICKS(1));
@@ -57,7 +58,8 @@ void UsbDeviceTask(void* arg) {
 // Global Instance Access
 // =============================================================================
 
-UsbHidDevice& GetUsbHidDevice() {
+UsbHidDevice &GetUsbHidDevice()
+{
     static UsbHidDevice instance;
     return instance;
 }
@@ -68,53 +70,58 @@ UsbHidDevice& GetUsbHidDevice() {
 
 extern "C" {
 
-void tud_mount_cb(void) {
+void tud_mount_cb(void)
+{
     ESP_LOGI(kTag, "USB mounted");
     if (g_usb_hid_instance) {
         g_usb_hid_instance->OnMount();
     }
 }
 
-void tud_umount_cb(void) {
+void tud_umount_cb(void)
+{
     ESP_LOGI(kTag, "USB unmounted");
     if (g_usb_hid_instance) {
         g_usb_hid_instance->OnUnmount();
     }
 }
 
-void tud_suspend_cb(bool remote_wakeup_en) {
-    (void)remote_wakeup_en;
+void tud_suspend_cb(bool remote_wakeup_en)
+{
+    (void) remote_wakeup_en;
     ESP_LOGI(kTag, "USB suspended");
 }
 
-void tud_resume_cb(void) {
+void tud_resume_cb(void)
+{
     ESP_LOGI(kTag, "USB resumed");
 }
 
-uint8_t const* tud_hid_descriptor_report_cb(uint8_t itf) {
-    (void)itf;
+uint8_t const *tud_hid_descriptor_report_cb(uint8_t itf)
+{
+    (void) itf;
     return kHidReportDescriptor;
 }
 
-uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id,
-                               hid_report_type_t report_type, uint8_t* buffer,
-                               uint16_t reqlen) {
-    (void)itf;
-    (void)report_type;
-    (void)reqlen;
-    (void)report_id;
-    (void)buffer;
+uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type,
+                               uint8_t *buffer, uint16_t reqlen)
+{
+    (void) itf;
+    (void) report_type;
+    (void) reqlen;
+    (void) report_id;
+    (void) buffer;
     return 0;
 }
 
-void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id,
-                           hid_report_type_t report_type,
-                           uint8_t const* buffer, uint16_t bufsize) {
-    (void)itf;
-    (void)report_id;
-    (void)report_type;
-    (void)buffer;
-    (void)bufsize;
+void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type,
+                           uint8_t const *buffer, uint16_t bufsize)
+{
+    (void) itf;
+    (void) report_id;
+    (void) report_type;
+    (void) buffer;
+    (void) bufsize;
 }
 
 }  // extern "C"
@@ -123,7 +130,8 @@ void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id,
 // UsbHidDevice Implementation
 // =============================================================================
 
-bool UsbHidDevice::Init() {
+bool UsbHidDevice::Init()
+{
     ESP_LOGI(kTag, "Initializing USB HID device");
 
     mutex_ = xSemaphoreCreateMutex();
@@ -136,59 +144,50 @@ bool UsbHidDevice::Init() {
 
     // USB device descriptor.
     static tusb_desc_device_t descriptor = {
-        .bLength = sizeof(descriptor),
-        .bDescriptorType = TUSB_DESC_DEVICE,
-        .bcdUSB = 0x0200,
-        .bDeviceClass = 0,
-        .bDeviceSubClass = 0,
-        .bDeviceProtocol = 0,
-        .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
-        .idVendor = config::kUsbVendorId,
-        .idProduct = config::kUsbProductId,
-        .bcdDevice = 0x0100,
-        .iManufacturer = 0x01,
-        .iProduct = 0x02,
-        .iSerialNumber = 0x03,
+        .bLength            = sizeof(descriptor),
+        .bDescriptorType    = TUSB_DESC_DEVICE,
+        .bcdUSB             = 0x0200,
+        .bDeviceClass       = 0,
+        .bDeviceSubClass    = 0,
+        .bDeviceProtocol    = 0,
+        .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
+        .idVendor           = config::kUsbVendorId,
+        .idProduct          = config::kUsbProductId,
+        .bcdDevice          = 0x0100,
+        .iManufacturer      = 0x01,
+        .iProduct           = 0x02,
+        .iSerialNumber      = 0x03,
         .bNumConfigurations = 0x01,
     };
 
-    static const char kLanguageDescriptor[] = {0x09, 0x04};
-    static const char* kStringDescriptor[] = {
-        kLanguageDescriptor,
-        config::kUsbManufacturer,
-        config::kUsbProduct,
-        config::kUsbSerialNumber,
-        "HID Interface",
+    static const char  kLanguageDescriptor[] = {0x09, 0x04};
+    static const char *kStringDescriptor[]   = {
+        kLanguageDescriptor,      config::kUsbManufacturer, config::kUsbProduct,
+        config::kUsbSerialNumber, "HID Interface",
     };
 
     tinyusb_config_t tusb_cfg = {
-        .device_descriptor = &descriptor,
-        .string_descriptor = kStringDescriptor,
-        .string_descriptor_count =
-            sizeof(kStringDescriptor) / sizeof(kStringDescriptor[0]),
-        .external_phy = false,
+        .device_descriptor        = &descriptor,
+        .string_descriptor        = kStringDescriptor,
+        .string_descriptor_count  = sizeof(kStringDescriptor) / sizeof(kStringDescriptor[0]),
+        .external_phy             = false,
         .configuration_descriptor = kHidConfigurationDescriptor,
-        .self_powered = false,
-        .vbus_monitor_io = -1,
+        .self_powered             = false,
+        .vbus_monitor_io          = -1,
     };
 
     esp_err_t err = tinyusb_driver_install(&tusb_cfg);
     if (err != ESP_OK) {
-        ESP_LOGE(kTag, "TinyUSB driver install failed: %s",
-                 esp_err_to_name(err));
+        ESP_LOGE(kTag, "TinyUSB driver install failed: %s", esp_err_to_name(err));
         return false;
     }
 
     // Pin TinyUSB task to Core 0 (system core) to avoid contention with
     // real-time CAN processing on Core 1.
-    xTaskCreatePinnedToCore(
-        UsbDeviceTask,
-        "TinyUSB",
-        4096,
-        nullptr,
-        5,              // Priority
-        nullptr,
-        0               // Core 0 (PRO_CPU)
+    xTaskCreatePinnedToCore(UsbDeviceTask, "TinyUSB", 4096, nullptr,
+                            5,  // Priority
+                            nullptr,
+                            0  // Core 0 (PRO_CPU)
     );
 
     initialized_ = true;
@@ -196,15 +195,18 @@ bool UsbHidDevice::Init() {
     return true;
 }
 
-bool UsbHidDevice::IsConnected() const {
+bool UsbHidDevice::IsConnected() const
+{
     return connected_ && tud_ready();
 }
 
-void UsbHidDevice::OnMount() {
+void UsbHidDevice::OnMount()
+{
     connected_ = true;
 }
 
-void UsbHidDevice::OnUnmount() {
+void UsbHidDevice::OnUnmount()
+{
     connected_ = false;
 }
 
@@ -212,8 +214,10 @@ void UsbHidDevice::OnUnmount() {
 // Keyboard Functions
 // =============================================================================
 
-void UsbHidDevice::KeyPress(uint8_t keycode) {
-    if (!IsConnected()) return;
+void UsbHidDevice::KeyPress(uint8_t keycode)
+{
+    if (!IsConnected())
+        return;
 
     if (xSemaphoreTake(mutex_, portMAX_DELAY) == pdTRUE) {
         for (int i = 0; i < 6; ++i) {
@@ -227,8 +231,10 @@ void UsbHidDevice::KeyPress(uint8_t keycode) {
     }
 }
 
-void UsbHidDevice::KeyRelease(uint8_t keycode) {
-    if (!IsConnected()) return;
+void UsbHidDevice::KeyRelease(uint8_t keycode)
+{
+    if (!IsConnected())
+        return;
 
     if (xSemaphoreTake(mutex_, portMAX_DELAY) == pdTRUE) {
         for (int i = 0; i < 6; ++i) {
@@ -242,37 +248,43 @@ void UsbHidDevice::KeyRelease(uint8_t keycode) {
     }
 }
 
-void UsbHidDevice::KeyPressAndRelease(uint8_t keycode) {
+void UsbHidDevice::KeyPressAndRelease(uint8_t keycode)
+{
     KeyPress(keycode);
     vTaskDelay(pdMS_TO_TICKS(50));
     KeyRelease(keycode);
 }
 
-void UsbHidDevice::SendKeyboardReport() {
-    tud_hid_n_report(0, kReportIdKeyboard, &keyboard_report_,
-                     sizeof(keyboard_report_));
+void UsbHidDevice::SendKeyboardReport()
+{
+    tud_hid_n_report(0, kReportIdKeyboard, &keyboard_report_, sizeof(keyboard_report_));
 }
 
 // =============================================================================
 // Media Control Functions
 // =============================================================================
 
-void UsbHidDevice::MediaKeyPress(uint16_t keycode) {
-    if (!IsConnected()) return;
+void UsbHidDevice::MediaKeyPress(uint16_t keycode)
+{
+    if (!IsConnected())
+        return;
 
     uint16_t usage = keycode;
     tud_hid_n_report(0, kReportIdConsumer, &usage, sizeof(usage));
 }
 
-void UsbHidDevice::MediaKeyRelease(uint16_t keycode) {
-    (void)keycode;
-    if (!IsConnected()) return;
+void UsbHidDevice::MediaKeyRelease(uint16_t keycode)
+{
+    (void) keycode;
+    if (!IsConnected())
+        return;
 
     uint16_t usage = 0;
     tud_hid_n_report(0, kReportIdConsumer, &usage, sizeof(usage));
 }
 
-void UsbHidDevice::MediaKeyPressAndRelease(uint16_t keycode) {
+void UsbHidDevice::MediaKeyPressAndRelease(uint16_t keycode)
+{
     MediaKeyPress(keycode);
     vTaskDelay(pdMS_TO_TICKS(50));
     MediaKeyRelease(keycode);
@@ -282,8 +294,10 @@ void UsbHidDevice::MediaKeyPressAndRelease(uint16_t keycode) {
 // Mouse Functions
 // =============================================================================
 
-void UsbHidDevice::MouseMove(int8_t x, int8_t y) {
-    if (!IsConnected()) return;
+void UsbHidDevice::MouseMove(int8_t x, int8_t y)
+{
+    if (!IsConnected())
+        return;
 
     if (xSemaphoreTake(mutex_, portMAX_DELAY) == pdTRUE) {
         mouse_report_.x = x;
@@ -295,8 +309,10 @@ void UsbHidDevice::MouseMove(int8_t x, int8_t y) {
     }
 }
 
-void UsbHidDevice::MouseButtonPress(uint8_t button) {
-    if (!IsConnected()) return;
+void UsbHidDevice::MouseButtonPress(uint8_t button)
+{
+    if (!IsConnected())
+        return;
 
     if (xSemaphoreTake(mutex_, portMAX_DELAY) == pdTRUE) {
         mouse_report_.buttons |= button;
@@ -305,8 +321,10 @@ void UsbHidDevice::MouseButtonPress(uint8_t button) {
     }
 }
 
-void UsbHidDevice::MouseButtonRelease(uint8_t button) {
-    if (!IsConnected()) return;
+void UsbHidDevice::MouseButtonRelease(uint8_t button)
+{
+    if (!IsConnected())
+        return;
 
     if (xSemaphoreTake(mutex_, portMAX_DELAY) == pdTRUE) {
         mouse_report_.buttons &= ~button;
@@ -315,14 +333,17 @@ void UsbHidDevice::MouseButtonRelease(uint8_t button) {
     }
 }
 
-void UsbHidDevice::MouseClick(uint8_t button) {
+void UsbHidDevice::MouseClick(uint8_t button)
+{
     MouseButtonPress(button);
     vTaskDelay(pdMS_TO_TICKS(50));
     MouseButtonRelease(button);
 }
 
-void UsbHidDevice::MouseScroll(int8_t wheel) {
-    if (!IsConnected()) return;
+void UsbHidDevice::MouseScroll(int8_t wheel)
+{
+    if (!IsConnected())
+        return;
 
     if (xSemaphoreTake(mutex_, portMAX_DELAY) == pdTRUE) {
         mouse_report_.wheel = wheel;
@@ -332,7 +353,8 @@ void UsbHidDevice::MouseScroll(int8_t wheel) {
     }
 }
 
-void UsbHidDevice::SendMouseReport() {
+void UsbHidDevice::SendMouseReport()
+{
     tud_hid_n_report(0, kReportIdMouse, &mouse_report_, sizeof(mouse_report_));
 }
 

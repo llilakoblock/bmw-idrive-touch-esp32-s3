@@ -8,12 +8,13 @@
 
 #include "esp_log.h"
 #include "esp_ota_ops.h"
+
 #include "ota/ota_config.h"
 
 namespace idrive::ota {
 
 namespace {
-const char* kTag = "WEB_SERVER";
+const char *kTag = "WEB_SERVER";
 
 // Embedded HTML page for OTA upload.
 const char kOtaHtml[] = R"rawliteral(
@@ -159,15 +160,16 @@ const char kOtaHtml[] = R"rawliteral(
 // Static member definition.
 OtaCompleteCallback WebServer::ota_complete_callback_;
 
-bool WebServer::Start() {
+bool WebServer::Start()
+{
     if (server_) {
         return true;
     }
 
     ESP_LOGI(kTag, "Starting HTTP server...");
 
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.stack_size = 8192;
+    httpd_config_t config   = HTTPD_DEFAULT_CONFIG();
+    config.stack_size       = 8192;
     config.max_uri_handlers = 4;
 
     esp_err_t ret = httpd_start(&server_, &config);
@@ -177,35 +179,23 @@ bool WebServer::Start() {
     }
 
     // Register URI handlers.
-    httpd_uri_t root = {
-        .uri = "/",
-        .method = HTTP_GET,
-        .handler = HandleRoot,
-        .user_ctx = nullptr
-    };
+    httpd_uri_t root = {.uri = "/", .method = HTTP_GET, .handler = HandleRoot, .user_ctx = nullptr};
     httpd_register_uri_handler(server_, &root);
 
     httpd_uri_t upload = {
-        .uri = "/upload",
-        .method = HTTP_POST,
-        .handler = HandleUpload,
-        .user_ctx = nullptr
-    };
+        .uri = "/upload", .method = HTTP_POST, .handler = HandleUpload, .user_ctx = nullptr};
     httpd_register_uri_handler(server_, &upload);
 
     httpd_uri_t reboot = {
-        .uri = "/reboot",
-        .method = HTTP_POST,
-        .handler = HandleReboot,
-        .user_ctx = nullptr
-    };
+        .uri = "/reboot", .method = HTTP_POST, .handler = HandleReboot, .user_ctx = nullptr};
     httpd_register_uri_handler(server_, &reboot);
 
     ESP_LOGI(kTag, "HTTP server started on port %d", config.server_port);
     return true;
 }
 
-void WebServer::Stop() {
+void WebServer::Stop()
+{
     if (server_) {
         httpd_stop(server_);
         server_ = nullptr;
@@ -213,17 +203,20 @@ void WebServer::Stop() {
     }
 }
 
-void WebServer::SetOtaCompleteCallback(OtaCompleteCallback callback) {
+void WebServer::SetOtaCompleteCallback(OtaCompleteCallback callback)
+{
     ota_complete_callback_ = std::move(callback);
 }
 
-esp_err_t WebServer::HandleRoot(httpd_req_t* req) {
+esp_err_t WebServer::HandleRoot(httpd_req_t *req)
+{
     httpd_resp_set_type(req, "text/html");
     httpd_resp_send(req, kOtaHtml, std::strlen(kOtaHtml));
     return ESP_OK;
 }
 
-esp_err_t WebServer::HandleUpload(httpd_req_t* req) {
+esp_err_t WebServer::HandleUpload(httpd_req_t *req)
+{
     ESP_LOGI(kTag, "OTA upload started, size: %d bytes", req->content_len);
 
     // Validate content length.
@@ -234,11 +227,10 @@ esp_err_t WebServer::HandleUpload(httpd_req_t* req) {
     }
 
     // Get update partition.
-    const esp_partition_t* partition = esp_ota_get_next_update_partition(nullptr);
+    const esp_partition_t *partition = esp_ota_get_next_update_partition(nullptr);
     if (!partition) {
         ESP_LOGE(kTag, "No OTA partition found");
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
-                           "No OTA partition");
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No OTA partition");
         return ESP_FAIL;
     }
 
@@ -246,21 +238,20 @@ esp_err_t WebServer::HandleUpload(httpd_req_t* req) {
 
     // Begin OTA.
     esp_ota_handle_t ota_handle;
-    esp_err_t err = esp_ota_begin(partition, req->content_len, &ota_handle);
+    esp_err_t        err = esp_ota_begin(partition, req->content_len, &ota_handle);
     if (err != ESP_OK) {
         ESP_LOGE(kTag, "esp_ota_begin failed: %s", esp_err_to_name(err));
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
-                           "OTA begin failed");
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA begin failed");
         return ESP_FAIL;
     }
 
     // Receive and write chunks.
     char buf[config::kUploadBufferSize];
-    int remaining = req->content_len;
-    int total_received = 0;
+    int  remaining      = req->content_len;
+    int  total_received = 0;
 
     while (remaining > 0) {
-        int to_read = std::min(remaining, static_cast<int>(sizeof(buf)));
+        int to_read  = std::min(remaining, static_cast<int>(sizeof(buf)));
         int received = httpd_req_recv(req, buf, to_read);
 
         if (received <= 0) {
@@ -269,8 +260,7 @@ esp_err_t WebServer::HandleUpload(httpd_req_t* req) {
             }
             ESP_LOGE(kTag, "Receive error");
             esp_ota_abort(ota_handle);
-            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
-                               "Receive error");
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Receive error");
             return ESP_FAIL;
         }
 
@@ -278,8 +268,7 @@ esp_err_t WebServer::HandleUpload(httpd_req_t* req) {
         if (err != ESP_OK) {
             ESP_LOGE(kTag, "esp_ota_write failed: %s", esp_err_to_name(err));
             esp_ota_abort(ota_handle);
-            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
-                               "Flash write error");
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Flash write error");
             return ESP_FAIL;
         }
 
@@ -287,7 +276,7 @@ esp_err_t WebServer::HandleUpload(httpd_req_t* req) {
         total_received += received;
 
         // Log progress every 10%.
-        int pct = (total_received * 100) / req->content_len;
+        int        pct      = (total_received * 100) / req->content_len;
         static int last_pct = 0;
         if (pct / 10 > last_pct / 10) {
             ESP_LOGI(kTag, "OTA progress: %d%%", pct);
@@ -299,23 +288,19 @@ esp_err_t WebServer::HandleUpload(httpd_req_t* req) {
     err = esp_ota_end(ota_handle);
     if (err != ESP_OK) {
         ESP_LOGE(kTag, "esp_ota_end failed: %s", esp_err_to_name(err));
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
-                           "OTA verification failed");
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA verification failed");
         return ESP_FAIL;
     }
 
     // Set boot partition.
     err = esp_ota_set_boot_partition(partition);
     if (err != ESP_OK) {
-        ESP_LOGE(kTag, "esp_ota_set_boot_partition failed: %s",
-                 esp_err_to_name(err));
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
-                           "Set boot partition failed");
+        ESP_LOGE(kTag, "esp_ota_set_boot_partition failed: %s", esp_err_to_name(err));
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Set boot partition failed");
         return ESP_FAIL;
     }
 
-    ESP_LOGI(kTag, "OTA complete: %d bytes written to %s",
-             total_received, partition->label);
+    ESP_LOGI(kTag, "OTA complete: %d bytes written to %s", total_received, partition->label);
 
     // Send success response.
     httpd_resp_set_type(req, "application/json");
@@ -329,7 +314,8 @@ esp_err_t WebServer::HandleUpload(httpd_req_t* req) {
     return ESP_OK;
 }
 
-esp_err_t WebServer::HandleReboot(httpd_req_t* req) {
+esp_err_t WebServer::HandleReboot(httpd_req_t *req)
+{
     ESP_LOGI(kTag, "Reboot requested");
     httpd_resp_sendstr(req, "Rebooting...");
 

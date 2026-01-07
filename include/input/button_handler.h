@@ -10,10 +10,10 @@
 namespace idrive {
 
 class ButtonHandler : public InputHandler {
-public:
+   public:
     using InputHandler::InputHandler;
 
-    bool Handle(const InputEvent& event) override;
+    bool Handle(const InputEvent &event) override;
 };
 
 }  // namespace idrive

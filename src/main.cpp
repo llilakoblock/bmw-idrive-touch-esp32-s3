@@ -4,6 +4,11 @@
 // Main application entry point for ESP32-S3 iDrive controller adapter.
 // Initializes CAN bus, USB HID, and runs the main control loop.
 
+#include "esp_log.h"
+#include "esp_task_wdt.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 #include "can/can_bus.h"
 #include "can/can_task.h"
 #include "config/config.h"
@@ -11,16 +16,12 @@
 #include "idrive/idrive_controller.h"
 #include "ota/ota_manager.h"
 
-#include "esp_log.h"
-#include "esp_task_wdt.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-
 namespace {
-const char* kTag = "MAIN";
+const char *kTag = "MAIN";
 }
 
-extern "C" void app_main() {
+extern "C" void app_main()
+{
     ESP_LOGI(kTag, "BMW iDrive Touch Adapter - Starting...");
     ESP_LOGI(kTag, "Modern C++17 Architecture with OTA Support");
     ESP_LOGI(kTag, "Main task running on core %d", xPortGetCoreID());
@@ -38,7 +39,7 @@ extern "C" void app_main() {
     idrive::CanTask can_task(can);
 
     // Get USB HID device instance.
-    idrive::UsbHidDevice& hid = idrive::GetUsbHidDevice();
+    idrive::UsbHidDevice &hid = idrive::GetUsbHidDevice();
 
     // Configuration.
     idrive::Config config {

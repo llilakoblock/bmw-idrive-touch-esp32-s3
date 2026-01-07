@@ -31,16 +31,16 @@ extern "C" {
 
 // Debug level (0 = off).
 #ifndef CFG_TUSB_DEBUG
-#define CFG_TUSB_DEBUG 0
+    #define CFG_TUSB_DEBUG 0
 #endif
 
 // Memory section configuration.
 #ifndef CFG_TUSB_MEM_SECTION
-#define CFG_TUSB_MEM_SECTION
+    #define CFG_TUSB_MEM_SECTION
 #endif
 
 #ifndef CFG_TUSB_MEM_ALIGN
-#define CFG_TUSB_MEM_ALIGN __attribute__((aligned(4)))
+    #define CFG_TUSB_MEM_ALIGN __attribute__((aligned(4)))
 #endif
 
 // =============================================================================

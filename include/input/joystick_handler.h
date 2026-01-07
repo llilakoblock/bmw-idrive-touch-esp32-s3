@@ -10,17 +10,17 @@
 namespace idrive {
 
 class JoystickHandler : public InputHandler {
-public:
-    JoystickHandler(UsbHidDevice& hid, bool as_mouse, int move_step = 30);
+   public:
+    JoystickHandler(UsbHidDevice &hid, bool as_mouse, int move_step = 30);
 
-    bool Handle(const InputEvent& event) override;
+    bool Handle(const InputEvent &event) override;
 
     void SetAsMouse(bool as_mouse) { as_mouse_ = as_mouse; }
     bool IsMouse() const { return as_mouse_; }
 
-private:
+   private:
     bool as_mouse_;
-    int move_step_;
+    int  move_step_;
 };
 
 }  // namespace idrive

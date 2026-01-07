@@ -3,17 +3,19 @@
 
 #include "input/button_handler.h"
 
-#include "config/config.h"
 #include "esp_log.h"
+
+#include "config/config.h"
 #include "hid/hid_keycodes.h"
 
 namespace idrive {
 
 namespace {
-const char* kTag = "BUTTON";
+const char *kTag = "BUTTON";
 }
 
-bool ButtonHandler::Handle(const InputEvent& event) {
+bool ButtonHandler::Handle(const InputEvent &event)
+{
     if (event.type != InputEvent::Type::Button) {
         return false;
     }
@@ -61,8 +63,7 @@ bool ButtonHandler::Handle(const InputEvent& event) {
     }
 
     if (event.state == protocol::kInputPressed) {
-        ESP_LOGI(kTag, "Button pressed: 0x%02X -> HID key: 0x%04X",
-                 event.id, media_key);
+        ESP_LOGI(kTag, "Button pressed: 0x%02X -> HID key: 0x%04X", event.id, media_key);
         hid_.MediaKeyPress(media_key);
     } else if (event.state == protocol::kInputReleased) {
         ESP_LOGI(kTag, "Button released: 0x%02X", event.id);

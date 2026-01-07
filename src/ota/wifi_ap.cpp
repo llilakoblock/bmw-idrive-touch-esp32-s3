@@ -9,16 +9,18 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
+
 #include "nvs_flash.h"
 #include "ota/ota_config.h"
 
 namespace idrive::ota {
 
 namespace {
-const char* kTag = "WIFI_AP";
+const char *kTag = "WIFI_AP";
 }
 
-bool WifiAp::Start() {
+bool WifiAp::Start()
+{
     if (running_) {
         return true;
     }
@@ -27,8 +29,7 @@ bool WifiAp::Start() {
 
     // Initialize NVS (required for WiFi).
     esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
-        ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
@@ -48,28 +49,29 @@ bool WifiAp::Start() {
 
     // Configure AP.
     wifi_config_t wifi_config = {};
-    std::strncpy(reinterpret_cast<char*>(wifi_config.ap.ssid),
-                 config::kApSsid, sizeof(wifi_config.ap.ssid));
-    std::strncpy(reinterpret_cast<char*>(wifi_config.ap.password),
-                 config::kApPassword, sizeof(wifi_config.ap.password));
-    wifi_config.ap.ssid_len = std::strlen(config::kApSsid);
-    wifi_config.ap.channel = config::kApChannel;
+    std::strncpy(reinterpret_cast<char *>(wifi_config.ap.ssid), config::kApSsid,
+                 sizeof(wifi_config.ap.ssid));
+    std::strncpy(reinterpret_cast<char *>(wifi_config.ap.password), config::kApPassword,
+                 sizeof(wifi_config.ap.password));
+    wifi_config.ap.ssid_len       = std::strlen(config::kApSsid);
+    wifi_config.ap.channel        = config::kApChannel;
     wifi_config.ap.max_connection = config::kApMaxConnections;
-    wifi_config.ap.authmode = WIFI_AUTH_WPA2_PSK;
+    wifi_config.ap.authmode       = WIFI_AUTH_WPA2_PSK;
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
     running_ = true;
-    ESP_LOGI(kTag, "WiFi AP started: SSID='%s', Password='%s'",
-             config::kApSsid, config::kApPassword);
+    ESP_LOGI(kTag, "WiFi AP started: SSID='%s', Password='%s'", config::kApSsid,
+             config::kApPassword);
     ESP_LOGI(kTag, "Connect to http://%s", GetIpAddress());
 
     return true;
 }
 
-void WifiAp::Stop() {
+void WifiAp::Stop()
+{
     if (!running_) {
         return;
     }

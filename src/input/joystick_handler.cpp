@@ -3,26 +3,29 @@
 
 #include "input/joystick_handler.h"
 
-#include "config/config.h"
 #include "esp_log.h"
+
+#include "config/config.h"
 #include "hid/hid_keycodes.h"
 
 namespace idrive {
 
 namespace {
-const char* kTag = "JOYSTICK";
+const char *kTag = "JOYSTICK";
 }
 
-JoystickHandler::JoystickHandler(UsbHidDevice& hid, bool as_mouse, int move_step)
-    : InputHandler(hid), as_mouse_(as_mouse), move_step_(move_step) {}
+JoystickHandler::JoystickHandler(UsbHidDevice &hid, bool as_mouse, int move_step)
+    : InputHandler(hid), as_mouse_(as_mouse), move_step_(move_step)
+{}
 
-bool JoystickHandler::Handle(const InputEvent& event) {
+bool JoystickHandler::Handle(const InputEvent &event)
+{
     if (event.type != InputEvent::Type::Joystick) {
         return false;
     }
 
     uint8_t direction = event.id;
-    uint8_t state = event.state;
+    uint8_t state     = event.state;
 
     if (as_mouse_) {
         // Joystick as mouse movement.

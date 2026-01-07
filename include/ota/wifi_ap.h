@@ -10,7 +10,7 @@
 namespace idrive::ota {
 
 class WifiAp {
-public:
+   public:
     // Start WiFi AP with configured credentials.
     bool Start();
 
@@ -21,10 +21,10 @@ public:
     bool IsRunning() const { return running_; }
 
     // Get the AP IP address.
-    const char* GetIpAddress() const { return "192.168.4.1"; }
+    const char *GetIpAddress() const { return "192.168.4.1"; }
 
-private:
-    bool running_ = false;
+   private:
+    bool running_     = false;
     bool initialized_ = false;
 };
 

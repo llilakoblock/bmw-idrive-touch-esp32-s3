@@ -56,31 +56,31 @@ constexpr uint8_t k9 = 0x26;
 constexpr uint8_t k0 = 0x27;
 
 // Special keys
-constexpr uint8_t kEnter = 0x28;
-constexpr uint8_t kEscape = 0x29;
+constexpr uint8_t kEnter     = 0x28;
+constexpr uint8_t kEscape    = 0x29;
 constexpr uint8_t kBackspace = 0x2A;
-constexpr uint8_t kTab = 0x2B;
-constexpr uint8_t kSpace = 0x2C;
+constexpr uint8_t kTab       = 0x2B;
+constexpr uint8_t kSpace     = 0x2C;
 
 // Function keys
-constexpr uint8_t kF1 = 0x3A;
-constexpr uint8_t kF2 = 0x3B;
-constexpr uint8_t kF3 = 0x3C;
-constexpr uint8_t kF4 = 0x3D;
-constexpr uint8_t kF5 = 0x3E;
-constexpr uint8_t kF6 = 0x3F;
-constexpr uint8_t kF7 = 0x40;
-constexpr uint8_t kF8 = 0x41;
-constexpr uint8_t kF9 = 0x42;
+constexpr uint8_t kF1  = 0x3A;
+constexpr uint8_t kF2  = 0x3B;
+constexpr uint8_t kF3  = 0x3C;
+constexpr uint8_t kF4  = 0x3D;
+constexpr uint8_t kF5  = 0x3E;
+constexpr uint8_t kF6  = 0x3F;
+constexpr uint8_t kF7  = 0x40;
+constexpr uint8_t kF8  = 0x41;
+constexpr uint8_t kF9  = 0x42;
 constexpr uint8_t kF10 = 0x43;
 constexpr uint8_t kF11 = 0x44;
 constexpr uint8_t kF12 = 0x45;
 
 // Arrow keys
 constexpr uint8_t kRight = 0x4F;
-constexpr uint8_t kLeft = 0x50;
-constexpr uint8_t kDown = 0x51;
-constexpr uint8_t kUp = 0x52;
+constexpr uint8_t kLeft  = 0x50;
+constexpr uint8_t kDown  = 0x51;
+constexpr uint8_t kUp    = 0x52;
 
 }  // namespace key
 
@@ -90,18 +90,18 @@ constexpr uint8_t kUp = 0x52;
 
 namespace media {
 
-constexpr uint16_t kPlayPause = 0x00CD;
-constexpr uint16_t kStop = 0x00B7;
-constexpr uint16_t kNextTrack = 0x00B5;
-constexpr uint16_t kPrevTrack = 0x00B6;
-constexpr uint16_t kVolumeUp = 0x00E9;
+constexpr uint16_t kPlayPause  = 0x00CD;
+constexpr uint16_t kStop       = 0x00B7;
+constexpr uint16_t kNextTrack  = 0x00B5;
+constexpr uint16_t kPrevTrack  = 0x00B6;
+constexpr uint16_t kVolumeUp   = 0x00E9;
 constexpr uint16_t kVolumeDown = 0x00EA;
-constexpr uint16_t kMute = 0x00E2;
-constexpr uint16_t kBassBoost = 0x00E5;
-constexpr uint16_t kLoudness = 0x00E7;
-constexpr uint16_t kBassUp = 0x0152;
-constexpr uint16_t kBassDown = 0x0153;
-constexpr uint16_t kTrebleUp = 0x0154;
+constexpr uint16_t kMute       = 0x00E2;
+constexpr uint16_t kBassBoost  = 0x00E5;
+constexpr uint16_t kLoudness   = 0x00E7;
+constexpr uint16_t kBassUp     = 0x0152;
+constexpr uint16_t kBassDown   = 0x0153;
+constexpr uint16_t kTrebleUp   = 0x0154;
 constexpr uint16_t kTrebleDown = 0x0155;
 
 }  // namespace media
@@ -112,11 +112,11 @@ constexpr uint16_t kTrebleDown = 0x0155;
 
 namespace android {
 
-constexpr uint16_t kBack = 0x0224;        // AC Back - native Android back
-constexpr uint16_t kHome = 0x0223;        // AC Home - native Android home
-constexpr uint16_t kMenu = 0x0040;        // Menu key (legacy)
-constexpr uint16_t kSearch = 0x0221;      // AC Search
-constexpr uint16_t kAlPhone = 0x018B;     // AL Phone - opens dialer
+constexpr uint16_t kBack          = 0x0224;  // AC Back - native Android back
+constexpr uint16_t kHome          = 0x0223;  // AC Home - native Android home
+constexpr uint16_t kMenu          = 0x0040;  // Menu key (legacy)
+constexpr uint16_t kSearch        = 0x0221;  // AC Search
+constexpr uint16_t kAlPhone       = 0x018B;  // AL Phone - opens dialer
 constexpr uint16_t kAlMusicPlayer = 0x0183;  // AL Music Player - opens music app
 
 }  // namespace android
@@ -141,8 +141,8 @@ constexpr uint16_t kCustom3 = 0x018D;  // AL Checkbook/Finance (for RADIO)
 
 namespace mouse {
 
-constexpr uint8_t kButtonLeft = 0x01;
-constexpr uint8_t kButtonRight = 0x02;
+constexpr uint8_t kButtonLeft   = 0x01;
+constexpr uint8_t kButtonRight  = 0x02;
 constexpr uint8_t kButtonMiddle = 0x04;
 
 }  // namespace mouse

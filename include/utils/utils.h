@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 namespace idrive::utils {
 
@@ -15,9 +15,12 @@ uint32_t GetMillis();
 
 // Constrains a value to a specified range [min_val, max_val].
 template <typename T>
-constexpr T Constrain(T value, T min_val, T max_val) {
-    if (value < min_val) return min_val;
-    if (value > max_val) return max_val;
+constexpr T Constrain(T value, T min_val, T max_val)
+{
+    if (value < min_val)
+        return min_val;
+    if (value > max_val)
+        return max_val;
     return value;
 }
 
@@ -26,9 +29,11 @@ int MapValue(int x, int in_min, int in_max, int out_min, int out_max);
 
 // Checks if a value exists in an array.
 template <typename T, size_t N>
-constexpr bool IsInArray(T value, const T (&array)[N]) {
+constexpr bool IsInArray(T value, const T (&array)[N])
+{
     for (size_t i = 0; i < N; ++i) {
-        if (array[i] == value) return true;
+        if (array[i] == value)
+            return true;
     }
     return false;
 }

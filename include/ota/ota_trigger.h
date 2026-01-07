@@ -14,7 +14,7 @@ namespace idrive::ota {
 using OtaTriggerCallback = std::function<void()>;
 
 class OtaTrigger {
-public:
+   public:
     // Set callback for when OTA mode is triggered.
     void SetCallback(OtaTriggerCallback callback);
 
@@ -27,13 +27,13 @@ public:
     // Check if currently detecting combo.
     bool IsDetecting() const { return detecting_; }
 
-private:
+   private:
     OtaTriggerCallback callback_;
 
-    bool menu_held_ = false;
-    bool back_held_ = false;
-    bool detecting_ = false;
-    bool triggered_ = false;
+    bool     menu_held_        = false;
+    bool     back_held_        = false;
+    bool     detecting_        = false;
+    bool     triggered_        = false;
     uint32_t combo_start_time_ = 0;
 };
 

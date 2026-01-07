@@ -20,15 +20,17 @@
 namespace idrive {
 
 // Forward declaration for OTA trigger.
-namespace ota { class OtaTrigger; }
+namespace ota {
+class OtaTrigger;
+}
 
 // =============================================================================
 // iDrive Controller Class
 // =============================================================================
 
 class IDriveController {
-public:
-    IDriveController(CanBus& can, UsbHidDevice& hid, const Config& config);
+   public:
+    IDriveController(CanBus &can, UsbHidDevice &hid, const Config &config);
 
     // Initialize the controller. Call after CAN and USB are initialized.
     void Init();
@@ -46,55 +48,55 @@ public:
     void SetLightEnabled(bool enabled);
 
     // Access to handlers for runtime configuration.
-    JoystickHandler* GetJoystickHandler() { return joystick_handler_; }
-    RotaryHandler* GetRotaryHandler() { return rotary_handler_; }
-    TouchpadHandler* GetTouchpadHandler() { return touchpad_handler_; }
+    JoystickHandler *GetJoystickHandler() { return joystick_handler_; }
+    RotaryHandler   *GetRotaryHandler() { return rotary_handler_; }
+    TouchpadHandler *GetTouchpadHandler() { return touchpad_handler_; }
 
     // Set OTA trigger for button combo detection.
-    void SetOtaTrigger(ota::OtaTrigger* trigger) { ota_trigger_ = trigger; }
+    void SetOtaTrigger(ota::OtaTrigger *trigger) { ota_trigger_ = trigger; }
 
-private:
-    CanBus& can_;
-    UsbHidDevice& hid_;
-    Config config_;
+   private:
+    CanBus       &can_;
+    UsbHidDevice &hid_;
+    Config        config_;
 
     // Input handlers.
     std::vector<std::unique_ptr<InputHandler>> handlers_;
-    ButtonHandler* button_handler_ = nullptr;
-    JoystickHandler* joystick_handler_ = nullptr;
-    RotaryHandler* rotary_handler_ = nullptr;
-    TouchpadHandler* touchpad_handler_ = nullptr;
+    ButtonHandler                             *button_handler_   = nullptr;
+    JoystickHandler                           *joystick_handler_ = nullptr;
+    RotaryHandler                             *rotary_handler_   = nullptr;
+    TouchpadHandler                           *touchpad_handler_ = nullptr;
 
     // State tracking.
-    bool ready_ = false;
-    bool rotary_init_done_ = false;
-    bool touchpad_init_done_ = false;
-    bool touchpad_active_ = false;  // True after receiving first 0xBF response
-    bool light_init_done_ = false;
+    bool ready_               = false;
+    bool rotary_init_done_    = false;
+    bool touchpad_init_done_  = false;
+    bool touchpad_active_     = false;  // True after receiving first 0xBF response
+    bool light_init_done_     = false;
     bool rotary_position_set_ = false;
-    bool light_enabled_ = true;
+    bool light_enabled_       = true;
 
-    uint32_t rotary_position_ = 0;
-    int touchpad_init_ignore_counter_ = 0;
+    uint32_t rotary_position_              = 0;
+    int      touchpad_init_ignore_counter_ = 0;
 
     // OTA trigger (optional, for button combo detection).
-    ota::OtaTrigger* ota_trigger_ = nullptr;
+    ota::OtaTrigger *ota_trigger_ = nullptr;
 
     // Timing.
-    uint32_t init_start_time_ = 0;
-    uint32_t cooldown_start_time_ = 0;
-    uint32_t last_poll_time_ = 0;
-    uint32_t last_light_time_ = 0;
-    uint32_t last_reinit_time_ = 0;
+    uint32_t init_start_time_         = 0;
+    uint32_t cooldown_start_time_     = 0;
+    uint32_t last_poll_time_          = 0;
+    uint32_t last_light_time_         = 0;
+    uint32_t last_reinit_time_        = 0;
     uint32_t last_touchpad_init_time_ = 0;
 
     // CAN message handlers.
-    void OnCanMessage(const CanMessage& msg);
-    void HandleInputMessage(const CanMessage& msg);
-    void HandleRotaryMessage(const CanMessage& msg);
-    void HandleTouchpadMessage(const CanMessage& msg);
-    void HandleRotaryInitResponse(const CanMessage& msg);
-    void HandleStatusMessage(const CanMessage& msg);
+    void OnCanMessage(const CanMessage &msg);
+    void HandleInputMessage(const CanMessage &msg);
+    void HandleRotaryMessage(const CanMessage &msg);
+    void HandleTouchpadMessage(const CanMessage &msg);
+    void HandleRotaryInitResponse(const CanMessage &msg);
+    void HandleStatusMessage(const CanMessage &msg);
 
     // Initialization commands.
     void SendRotaryInit();
@@ -103,7 +105,7 @@ private:
     void SendPollCommand();
 
     // Input event dispatch.
-    void DispatchEvent(const InputEvent& event);
+    void DispatchEvent(const InputEvent &event);
 };
 
 }  // namespace idrive

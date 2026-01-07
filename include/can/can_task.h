@@ -8,9 +8,10 @@
 
 #include <cstdint>
 
-#include "can/can_bus.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
+#include "can/can_bus.h"
 
 namespace idrive {
 
@@ -20,10 +21,10 @@ namespace idrive {
 
 namespace can_task_config {
 
-constexpr BaseType_t kCoreId = 1;           // Run on APP_CPU (Core 1)
-constexpr UBaseType_t kPriority = 10;       // High priority for real-time
-constexpr uint32_t kStackSize = 4096;       // Stack size in bytes
-constexpr uint32_t kTimeoutMs = 100;        // Timeout for periodic tasks
+constexpr BaseType_t  kCoreId    = 1;     // Run on APP_CPU (Core 1)
+constexpr UBaseType_t kPriority  = 10;    // High priority for real-time
+constexpr uint32_t    kStackSize = 4096;  // Stack size in bytes
+constexpr uint32_t    kTimeoutMs = 100;   // Timeout for periodic tasks
 
 }  // namespace can_task_config
 
@@ -32,12 +33,12 @@ constexpr uint32_t kTimeoutMs = 100;        // Timeout for periodic tasks
 // =============================================================================
 
 class CanTask {
-public:
-    explicit CanTask(CanBus& can);
+   public:
+    explicit CanTask(CanBus &can);
     ~CanTask();
 
     // Start the CAN task on specified core.
-    bool Start(BaseType_t core_id = can_task_config::kCoreId,
+    bool Start(BaseType_t  core_id  = can_task_config::kCoreId,
                UBaseType_t priority = can_task_config::kPriority);
 
     // Stop the CAN task.
@@ -50,20 +51,20 @@ public:
     TaskHandle_t GetHandle() const { return task_handle_; }
 
     // Notify task from ISR (static for ISR callback).
-    static void IRAM_ATTR NotifyFromISR(BaseType_t* higher_priority_woken);
+    static void IRAM_ATTR NotifyFromISR(BaseType_t *higher_priority_woken);
 
     // Get singleton instance for ISR access.
-    static CanTask* GetInstance() { return instance_; }
+    static CanTask *GetInstance() { return instance_; }
 
-private:
-    static void TaskFunction(void* arg);
-    void Run();
+   private:
+    static void TaskFunction(void *arg);
+    void        Run();
 
-    CanBus& can_;
-    TaskHandle_t task_handle_ = nullptr;
-    volatile bool running_ = false;
+    CanBus       &can_;
+    TaskHandle_t  task_handle_ = nullptr;
+    volatile bool running_     = false;
 
-    static CanTask* instance_;
+    static CanTask *instance_;
 };
 
 }  // namespace idrive

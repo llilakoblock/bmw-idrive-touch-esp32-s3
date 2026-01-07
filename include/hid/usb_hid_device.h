@@ -18,13 +18,13 @@ namespace idrive {
 // =============================================================================
 
 class UsbHidDevice {
-public:
-    UsbHidDevice() = default;
+   public:
+    UsbHidDevice()  = default;
     ~UsbHidDevice() = default;
 
     // Non-copyable, non-movable (singleton-like behavior for USB).
-    UsbHidDevice(const UsbHidDevice&) = delete;
-    UsbHidDevice& operator=(const UsbHidDevice&) = delete;
+    UsbHidDevice(const UsbHidDevice &)            = delete;
+    UsbHidDevice &operator=(const UsbHidDevice &) = delete;
 
     // Initialize USB HID device.
     bool Init();
@@ -65,24 +65,24 @@ public:
     void OnMount();
     void OnUnmount();
 
-private:
-    SemaphoreHandle_t mutex_ = nullptr;
-    bool connected_ = false;
-    bool initialized_ = false;
+   private:
+    SemaphoreHandle_t mutex_       = nullptr;
+    bool              connected_   = false;
+    bool              initialized_ = false;
 
     // Current report states.
     struct {
-        uint8_t modifier = 0;
-        uint8_t reserved = 0;
+        uint8_t modifier   = 0;
+        uint8_t reserved   = 0;
         uint8_t keycode[6] = {0};
     } keyboard_report_ = {};
 
     struct {
         uint8_t buttons = 0;
-        int8_t x = 0;
-        int8_t y = 0;
-        int8_t wheel = 0;
-        int8_t pan = 0;
+        int8_t  x       = 0;
+        int8_t  y       = 0;
+        int8_t  wheel   = 0;
+        int8_t  pan     = 0;
     } mouse_report_ = {};
 
     void SendKeyboardReport();
@@ -90,6 +90,6 @@ private:
 };
 
 // Global instance for TinyUSB callbacks.
-UsbHidDevice& GetUsbHidDevice();
+UsbHidDevice &GetUsbHidDevice();
 
 }  // namespace idrive

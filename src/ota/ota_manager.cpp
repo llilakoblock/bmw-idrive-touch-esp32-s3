@@ -7,17 +7,19 @@
 #include "esp_ota_ops.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
 #include "ota/ota_config.h"
 
 namespace idrive::ota {
 
 namespace {
-const char* kTag = "OTA_MANAGER";
+const char *kTag = "OTA_MANAGER";
 }
 
 OtaManager::OtaManager() = default;
 
-void OtaManager::Init() {
+void OtaManager::Init()
+{
     ESP_LOGI(kTag, "========================================");
     ESP_LOGI(kTag, "OTA Manager initialized");
     ESP_LOGI(kTag, "Hold Menu+Back for 3 seconds to enter OTA mode");
@@ -30,11 +32,13 @@ void OtaManager::Init() {
     esp_ota_mark_app_valid_cancel_rollback();
 }
 
-void OtaManager::Update() {
+void OtaManager::Update()
+{
     trigger_.Update();
 }
 
-void OtaManager::OnOtaTriggered() {
+void OtaManager::OnOtaTriggered()
+{
     ESP_LOGI(kTag, "========================================");
     ESP_LOGI(kTag, "OTA MODE TRIGGERED!");
     ESP_LOGI(kTag, "========================================");
@@ -42,7 +46,8 @@ void OtaManager::OnOtaTriggered() {
     EnterOtaMode();
 }
 
-void OtaManager::EnterOtaMode() {
+void OtaManager::EnterOtaMode()
+{
     if (ota_mode_active_) {
         return;
     }
@@ -58,9 +63,7 @@ void OtaManager::EnterOtaMode() {
     }
 
     // Start web server.
-    server_.SetOtaCompleteCallback([this](bool success) {
-        OnOtaComplete(success);
-    });
+    server_.SetOtaCompleteCallback([this](bool success) { OnOtaComplete(success); });
 
     if (!server_.Start()) {
         ESP_LOGE(kTag, "Failed to start web server");
@@ -77,7 +80,8 @@ void OtaManager::EnterOtaMode() {
     ESP_LOGI(kTag, "========================================");
 }
 
-void OtaManager::ExitOtaMode() {
+void OtaManager::ExitOtaMode()
+{
     if (!ota_mode_active_) {
         return;
     }
@@ -88,7 +92,8 @@ void OtaManager::ExitOtaMode() {
     ota_mode_active_ = false;
 }
 
-void OtaManager::OnOtaComplete(bool success) {
+void OtaManager::OnOtaComplete(bool success)
+{
     if (success) {
         ESP_LOGI(kTag, "========================================");
         ESP_LOGI(kTag, "OTA SUCCESSFUL!");
