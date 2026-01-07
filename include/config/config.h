@@ -58,6 +58,21 @@ constexpr int kYMultiplier = 5;         // Y delta * 5 / 10 = 0.5 pixel per step
 // Two-finger scroll multiplier
 constexpr int kScrollMultiplier = 2;    // Scroll sensitivity
 
+// =============================================================================
+// Tap Gesture Configuration (laptop-style touchpad gestures)
+// =============================================================================
+
+// Tap timing (milliseconds)
+constexpr uint32_t kTapMaxDurationMs = 200;     // Max touch duration to count as tap
+constexpr uint32_t kDoubleTapWindowMs = 300;    // Window for second tap (tap-tap-hold)
+constexpr uint32_t kTapHoldDelayMs = 150;       // Delay before drag starts (reserved)
+
+// Tap movement threshold (raw touchpad coordinates, 0-511 range)
+constexpr int kTapMaxMovement = 20;             // Max movement during tap (prevents accidental taps while moving)
+
+// Two-finger tap threshold
+constexpr int kTwoFingerTapMaxMovement = 30;    // Max movement for two-finger tap
+
 // Debug Configuration
 constexpr bool kSerialDebug   = true;
 constexpr bool kDebugCan      = false;  // Reduce spam

@@ -75,7 +75,8 @@ can_.Send(0x317, data, 8);
 G-series ZBE4 touchpad is **POLL-BASED**:
 - Send poll message to `0x317`
 - Each poll returns current touch state on `0x0BF`
-- Recommended poll interval: **5-20ms** (50-200Hz) for smooth mouse movement
+- Recommended poll interval: **5-50ms** (20-200Hz) for smooth mouse movement
+- Current implementation: **50ms** (~20Hz, limited by main loop delay)
 
 ### Touchpad Response Format (0x0BF) - Multi-Touch Capable
 
@@ -261,8 +262,9 @@ Position is 16-bit value that wraps around. Calculate delta from previous positi
 ### Current Working Settings
 
 ```cpp
-// Timing
-constexpr uint32_t kPollIntervalMs = 5;    // 200Hz for smooth mouse
+// Timing - effective rate is limited by main loop (50ms)
+constexpr uint32_t kPollIntervalMs = 5;    // Min interval between polls
+// Main loop: vTaskDelay(pdMS_TO_TICKS(50)) in main.cpp
 
 // Multipliers (both X and Y: 0-511, 9-bit resolution)
 constexpr int kXMultiplier = 5;            // X: 512 steps
