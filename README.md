@@ -1,5 +1,12 @@
 # BMW iDrive Touch Controller for Android Head Unit
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![ESP-IDF](https://img.shields.io/badge/ESP--IDF-v5.x-blue)](https://docs.espressif.com/projects/esp-idf/)
+[![PlatformIO](https://img.shields.io/badge/PlatformIO-ESP32--S3-orange)](https://platformio.org/)
+[![GitHub issues](https://img.shields.io/github/issues/llilakoblock/bmw-idrive-touch-esp32-s3)](https://github.com/llilakoblock/bmw-idrive-touch-esp32-s3/issues)
+[![GitHub stars](https://img.shields.io/github/stars/llilakoblock/bmw-idrive-touch-esp32-s3)](https://github.com/llilakoblock/bmw-idrive-touch-esp32-s3/stargazers)
+[![Last commit](https://img.shields.io/github/last-commit/llilakoblock/bmw-idrive-touch-esp32-s3)](https://github.com/llilakoblock/bmw-idrive-touch-esp32-s3/commits/main)
+
 > ESP32-S3 adapter that connects BMW G-series iDrive Touch controller (ZBE4) to Android head units via USB HID.
 
 **Status: FULLY WORKING** - All features operational including touchpad!
