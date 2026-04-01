@@ -71,9 +71,6 @@ constexpr uint32_t kTapHoldDelayMs    = 150;  // Delay before drag starts (reser
 constexpr int kTapMaxMovement =
     20;  // Max movement during tap (prevents accidental taps while moving)
 
-// Two-finger tap threshold
-constexpr int kTwoFingerTapMaxMovement = 30;  // Max movement for two-finger tap
-
 // Debug Configuration
 constexpr bool kSerialDebug   = true;
 constexpr bool kDebugCan      = false;  // Reduce spam

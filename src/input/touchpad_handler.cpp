@@ -96,29 +96,6 @@ void TouchpadHandler::HandleFingerUp(const InputEvent &event)
     }
 }
 
-void TouchpadHandler::HandleTwoFingerDown(const InputEvent &event)
-{
-    two_finger_start_time_    = GetMillis();
-    two_finger_tap_candidate_ = true;
-}
-
-void TouchpadHandler::HandleTwoFingerUp()
-{
-    if (!two_finger_tap_candidate_) {
-        return;
-    }
-
-    uint32_t duration = GetMillis() - two_finger_start_time_;
-
-    // Check if it was a quick two-finger tap (right click)
-    if (duration < config::kTapMaxDurationMs) {
-        hid_.MouseClick(hid::mouse::kButtonRight);
-        ESP_LOGI(kTag, "Two-finger tap -> Right Click");
-    }
-
-    two_finger_tap_candidate_ = false;
-}
-
 bool TouchpadHandler::Handle(const InputEvent &event)
 {
     if (event.type != InputEvent::Type::Touchpad) {
@@ -129,21 +106,19 @@ bool TouchpadHandler::Handle(const InputEvent &event)
     // Finger removed
     // =========================================================================
     if (event.state == protocol::kTouchFingerRemoved) {
-        // Handle tap detection on finger up
-        if (tracking_two_fingers_) {
-            HandleTwoFingerUp();
-        } else if (tracking_) {
+        // Handle single-finger tap detection on finger up
+        if (tracking_ && !tracking_two_fingers_) {
             HandleFingerUp(event);
         }
 
         tracking_             = false;
         tracking_two_fingers_ = false;
-        ESP_LOGD(kTag, "Touchpad: finger(s) removed");
+        ESP_LOGD(kTag, "Finger(s) removed");
         return true;
     }
 
     // =========================================================================
-    // Two-finger gesture (scroll or right-click tap)
+    // Two-finger gesture (scroll only)
     // =========================================================================
     if (event.two_fingers) {
         if (!tracking_two_fingers_) {
@@ -154,27 +129,20 @@ bool TouchpadHandler::Handle(const InputEvent &event)
             prev_y2_              = event.y2;
             tracking_two_fingers_ = true;
             tracking_             = false;
-
-            HandleTwoFingerDown(event);
-            ESP_LOGD(kTag, "Touchpad: two-finger gesture started");
+            ESP_LOGD(kTag, "Two-finger scroll started");
             return true;
         }
 
-        // Calculate average Y movement of both fingers for scrolling
+        // Two-finger scroll (average Y movement of both fingers)
         int16_t delta_y1    = event.y - prev_y_;
         int16_t delta_y2    = event.y2 - prev_y2_;
         int16_t avg_delta_y = (delta_y1 + delta_y2) / 2;
 
-        // If significant movement, it's a scroll, not a tap
-        if (std::abs(avg_delta_y) >= min_travel_ * 3) {
-            two_finger_tap_candidate_ = false;  // Cancel tap candidate
-
-            // Convert to scroll (negative = scroll down, positive = scroll up)
-            int8_t scroll =
-                utils::Constrain(avg_delta_y * config::kScrollMultiplier / 10, -127, 127);
+        if (std::abs(avg_delta_y) >= min_travel_) {
+            int8_t scroll = utils::Constrain(avg_delta_y * config::kScrollMultiplier / 10, -127, 127);
 
             if (scroll != 0) {
-                ESP_LOGD(kTag, "Touchpad scroll: %d", scroll);
+                ESP_LOGD(kTag, "Scroll: %d", scroll);
                 hid_.MouseScroll(scroll);
             }
 
@@ -188,11 +156,12 @@ bool TouchpadHandler::Handle(const InputEvent &event)
     }
 
     // =========================================================================
-    // Single finger - reset two-finger tracking
+    // Single finger - end two-finger gesture if active
     // =========================================================================
     if (tracking_two_fingers_) {
         tracking_two_fingers_ = false;
         tracking_             = false;
+        ESP_LOGD(kTag, "Two-finger scroll ended");
     }
 
     // =========================================================================

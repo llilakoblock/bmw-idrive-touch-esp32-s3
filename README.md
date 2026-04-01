@@ -76,7 +76,6 @@ This adapter solves the problem by:
 | **Touchpad** | Mouse cursor movement | ✅ Working |
 | **Touchpad Tap** | Left Click | ✅ Working |
 | **Tap-Tap-Hold** | Drag (select text, move items) | ✅ Working |
-| **Two-finger Tap** | Right Click (context menu) | ✅ Working |
 | **Two-finger Scroll** | Scroll wheel emulation | ✅ Working |
 | **Backlight** | Illumination control | ✅ Working |
 | **OTA Updates** | WiFi firmware upload | ✅ Working |
@@ -97,7 +96,6 @@ This adapter solves the problem by:
 | **Move finger** | Mouse cursor | Move cursor on screen |
 | **Single tap** | Left click | Quick tap = click at cursor position |
 | **Tap-tap-hold** | Drag | Tap, then tap and hold = drag mode (select text, move icons) |
-| **Two-finger tap** | Right click | Tap with two fingers = context menu |
 | **Two-finger scroll** | Scroll | Swipe up/down with two fingers |
 
 > **Timing configuration** in `include/config/config.h`:

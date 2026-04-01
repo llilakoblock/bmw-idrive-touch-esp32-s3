@@ -271,12 +271,29 @@ void IDriveController::HandleTouchpadMessage(const CanMessage &msg)
 
     uint8_t touch_type = msg.data[4];
 
-    // Only log when there's actual touch data (skip 0x11 = no finger)
-    if (config::kDebugTouchpad && touch_type != protocol::kTouchFingerRemoved) {
-        // Print raw CAN message for analysis
-        ESP_LOGI(kTag, "Touch RAW: [%02X %02X %02X %02X %02X %02X %02X %02X]", msg.data[0],
-                 msg.data[1], msg.data[2], msg.data[3], msg.data[4], msg.data[5], msg.data[6],
-                 msg.data[7]);
+    // Log all touch messages for debugging (including finger removed)
+    if (config::kDebugTouchpad) {
+        const char *type_str = "?";
+        switch (touch_type) {
+            case protocol::kTouchFingerRemoved:
+                type_str = "REMOVED";
+                break;
+            case protocol::kTouchSingle:
+                type_str = "SINGLE";
+                break;
+            case protocol::kTouchMulti:
+                type_str = "MULTI";
+                break;
+            case protocol::kTouchTriple:
+                type_str = "TRIPLE";
+                break;
+            case protocol::kTouchQuad:
+                type_str = "QUAD";
+                break;
+        }
+        ESP_LOGD(kTag, "Touch: type=0x%02X (%s) [%02X %02X %02X %02X %02X %02X %02X %02X]",
+                 touch_type, type_str, msg.data[0], msg.data[1], msg.data[2], msg.data[3],
+                 msg.data[4], msg.data[5], msg.data[6], msg.data[7]);
     }
 
     // Ignore initial touchpad messages during initialization.

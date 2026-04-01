@@ -55,15 +55,9 @@ class TouchpadHandler : public InputHandler {
     uint32_t last_tap_time_    = 0;      // When last tap occurred
     bool     touch_moved_      = false;  // Did finger move significantly?
 
-    // Two-finger tap detection
-    uint32_t two_finger_start_time_    = 0;
-    bool     two_finger_tap_candidate_ = false;
-
     // Helper methods
     void     HandleFingerDown(const InputEvent &event);
     void     HandleFingerUp(const InputEvent &event);
-    void     HandleTwoFingerDown(const InputEvent &event);
-    void     HandleTwoFingerUp();
     uint32_t GetMillis() const;
 };
 
