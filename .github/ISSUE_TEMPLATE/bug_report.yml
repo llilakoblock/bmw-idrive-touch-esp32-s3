@@ -1,0 +1,80 @@
+name: Bug Report
+description: Report a problem with the iDrive adapter
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please fill in as much detail as possible.
+
+  - type: input
+    id: part-number
+    attributes:
+      label: iDrive Part Number
+      description: "Full part number from the controller label (e.g. 6582 6829079-03)"
+      placeholder: "6582 XXXXXXX-XX"
+    validations:
+      required: true
+
+  - type: input
+    id: controller-type
+    attributes:
+      label: Controller Type
+      description: "ZBE model if known (e.g. ZBE-06-TC)"
+      placeholder: "ZBE-06-TC"
+
+  - type: dropdown
+    id: esp-board
+    attributes:
+      label: ESP32 Board
+      options:
+        - ESP32-S3-DevKitC-1
+        - ESP32-S3-DevKitM-1
+        - Other (specify in description)
+    validations:
+      required: true
+
+  - type: input
+    id: can-transceiver
+    attributes:
+      label: CAN Transceiver
+      description: "Module used (e.g. Waveshare SN65HVD230, MCP2515, TJA1050)"
+      placeholder: "Waveshare SN65HVD230"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem Description
+      description: "What happens vs what you expected"
+    validations:
+      required: true
+
+  - type: textarea
+    id: serial-log
+    attributes:
+      label: Serial Monitor Output
+      description: "Paste relevant serial output. Enable `kDebugCan = true` in config.h for CAN traffic."
+      render: text
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: what-works
+    attributes:
+      label: What works?
+      options:
+        - label: "CAN bus initializes (500kbps log message)"
+        - label: "Rotary encoder init succeeds"
+        - label: "Touchpad sends data (0xBF frames)"
+        - label: "Buttons send data (0x267 frames)"
+        - label: "USB HID recognized by Android"
+        - label: "Mouse cursor moves on Android"
+        - label: "Button presses register on Android"
+
+  - type: textarea
+    id: wiring
+    attributes:
+      label: Wiring / Setup Notes
+      description: "Power supply voltage, termination resistors, cable length, anything unusual"
