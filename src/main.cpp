@@ -43,12 +43,13 @@ extern "C" void app_main()
 
     // Configuration.
     idrive::Config config {
-        .joystick_as_mouse  = false,  // Arrow keys mode (volume/tracks on steering wheel)
-        .light_brightness   = 255,
-        .poll_interval_ms   = idrive::config::kPollIntervalMs,
-        .light_keepalive_ms = idrive::config::kLightKeepaliveMs,
-        .min_mouse_travel   = idrive::config::kMinMouseTravel,
-        .joystick_move_step = idrive::config::kJoystickMoveStep,
+        .joystick_as_mouse     = false,  // Joystick sends arrow keys + Enter
+        .light_brightness      = 255,
+        .poll_interval_ms      = idrive::config::kPollIntervalMs,
+        .light_keepalive_ms    = idrive::config::kLightKeepaliveMs,
+        .inactivity_timeout_ms = idrive::config::kInactivitySleepTestMs,
+        .min_mouse_travel      = idrive::config::kMinMouseTravel,
+        .joystick_move_step    = idrive::config::kJoystickMoveStep,
     };
 
     // Create iDrive controller.
