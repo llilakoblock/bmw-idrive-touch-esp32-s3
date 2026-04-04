@@ -18,6 +18,7 @@ struct Config {
     uint8_t  light_brightness   = 0;
     uint32_t poll_interval_ms   = 500;
     uint32_t light_keepalive_ms = 10000;
+    uint32_t inactivity_timeout_ms = 0;  // 0 = disabled
     int      min_mouse_travel   = 5;
     int      joystick_move_step = 30;
 };
@@ -44,6 +45,7 @@ constexpr uint32_t kLightInitDurationMs  = 1000;
 constexpr uint32_t kLightKeepaliveMs     = 10000;
 constexpr uint32_t kControllerCooldownMs = 750;
 constexpr uint32_t kInitRetryIntervalMs  = 5000;
+constexpr uint32_t kInactivitySleepTestMs = 15 * 60 * 1000;  // 30 sec test 15 min regular
 
 // Input Configuration
 constexpr int kMinMouseTravel          = 1;  // Raw coords: 1 step threshold
@@ -53,8 +55,8 @@ constexpr int kTouchpadInitIgnoreCount = 0;
 // Both axes have identical resolution now.
 // X: 512 steps across touchpad width
 // Y: 512 steps across touchpad height
-constexpr int kXMultiplier = 5;  // X delta * 5 / 10 = 0.5 pixel per step
-constexpr int kYMultiplier = 5;  // Y delta * 5 / 10 = 0.5 pixel per step (same as X!)
+constexpr int kXMultiplier = 12;  // X delta * 12 / 10 = 1.2" pixel per step
+constexpr int kYMultiplier = 12;  // Y delta * 12 / 10 = 1.2 pixel per step (same as X!)
 // Two-finger scroll multiplier
 constexpr int kScrollMultiplier = 2;  // Scroll sensitivity
 
@@ -71,11 +73,14 @@ constexpr uint32_t kTapHoldDelayMs    = 150;  // Delay before drag starts (reser
 constexpr int kTapMaxMovement =
     20;  // Max movement during tap (prevents accidental taps while moving)
 
+// Two-finger tap threshold
+constexpr int kTwoFingerTapMaxMovement = 30;  // Max movement for two-finger tap
+
 // Debug Configuration
 constexpr bool kSerialDebug   = true;
-constexpr bool kDebugCan      = false;  // Reduce spam
+constexpr bool kDebugCan      = true;  // Reduce spam - should be false
 constexpr bool kDebugKeys     = true;
-constexpr bool kDebugTouchpad = true;  // See touch data
+constexpr bool kDebugTouchpad = false;  // See touch data - should be true
 
 }  // namespace config
 
@@ -86,12 +91,13 @@ constexpr bool kDebugTouchpad = true;  // See touch data
 namespace can_id {
 
 // Incoming messages (from iDrive controller)
-constexpr uint32_t kInput        = 0x267;  // Button and joystick input
-constexpr uint32_t kRotary       = 0x264;  // Rotary encoder data
-constexpr uint32_t kRotaryInit   = 0x277;  // Rotary initialization response
+constexpr uint32_t kInput        = 0x267;  // Legacy button/joystick input path
+constexpr uint32_t kInputAlt     = 0x25B;  // Main non-touch input stream for this controller (NEW)
+constexpr uint32_t kRotary       = 0x264;  // Legacy rotary encoder data path
+constexpr uint32_t kRotaryInit   = 0x277;  // Legacy rotary initialization response
 constexpr uint32_t kStatus       = 0x5E7;  // Status messages
 constexpr uint32_t kTouch        = 0xBF;   // Touchpad data (RX)
-constexpr uint32_t kTouchInitCmd = 0x317;  // Touchpad init command (TX)
+constexpr uint32_t kTouchInitCmd = 0x317;  // Touchpad poll/init command (TX)
 
 // Outgoing messages (to iDrive controller)
 constexpr uint32_t kRotaryInitCmd = 0x273;  // Rotary initialization command
@@ -115,10 +121,11 @@ constexpr uint8_t kInputTypeCenter = 0xDE;
 constexpr uint8_t kButtonMenu   = 0x01;
 constexpr uint8_t kButtonBack   = 0x02;
 constexpr uint8_t kButtonOption = 0x04;
-constexpr uint8_t kButtonRadio  = 0x08;
-constexpr uint8_t kButtonCd     = 0x10;
-constexpr uint8_t kButtonNav    = 0x20;
-constexpr uint8_t kButtonTel    = 0x40;
+constexpr uint8_t kButtonRadio  = 0x08;  // Legacy name, unused on this controller
+constexpr uint8_t kButtonCd     = 0x10;  // MEDIA on this controller
+constexpr uint8_t kButtonNav    = 0x20;  // NAV
+constexpr uint8_t kButtonTel    = 0x40;  // COM on this controller
+constexpr uint8_t kButtonMap    = 0x80;  // MAP on this controller
 
 // Joystick directions
 constexpr uint8_t kStickUp     = 0x01;
