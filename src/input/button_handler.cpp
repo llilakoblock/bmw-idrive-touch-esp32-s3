@@ -20,57 +20,79 @@ bool ButtonHandler::Handle(const InputEvent &event)
         return false;
     }
 
-    // Map iDrive buttons to HID keys.
-    // Native Android keys: Back, Home, AL Phone, AL Music Player
-    // Key Mapper keys: NAV, OPTION, RADIO (obscure codes for custom remapping)
     uint16_t media_key = 0;
+    uint8_t  keycode   = 0;
+
+            // Native Android actions:
+            // - MENU  -> Home
+            // - BACK  -> Back
+            // - MEDIA -> Music app
+            //
+            // Remappable buttons use keyboard F-keys:
+            // - OPTIONS -> F1
+            // - COM     -> F2
+            // - NAV     -> F3
+            // - MAP     -> F4
 
     switch (event.id) {
-        case protocol::kButtonMenu:
-            // MENU → Android Home (native)
-            media_key = hid::android::kHome;
-            break;
-        case protocol::kButtonBack:
-            // BACK → Android Back (native)
-            media_key = hid::android::kBack;
-            break;
-        case protocol::kButtonOption:
-            // OPTION → Key Mapper custom (for user remapping)
-            media_key = hid::keymapper::kCustom2;
-            break;
-        case protocol::kButtonRadio:
-            // RADIO → Key Mapper custom (for user remapping)
-            media_key = hid::keymapper::kCustom3;
-            break;
-        case protocol::kButtonCd:
-            // CD → AL Music Player (native Android)
-            media_key = hid::android::kAlMusicPlayer;
-            break;
-        case protocol::kButtonNav:
-            // NAV → Key Mapper custom (for user remapping to Maps/Waze)
-            media_key = hid::keymapper::kCustom1;
-            break;
-        case protocol::kButtonTel:
-            // TEL → AL Phone (native Android dialer)
-            media_key = hid::android::kAlPhone;
-            break;
-        default:
-            return false;
-    }
+            case protocol::kButtonMenu:
+                // Physical MENU -> Android Home
+                media_key = hid::android::kHome;
+                break;
 
-    if (media_key == 0) {
-        return false;
-    }
+            case protocol::kButtonBack:
+                // Physical BACK -> Android Back
+                media_key = hid::android::kBack;
+                break;
 
-    if (event.state == protocol::kInputPressed) {
-        ESP_LOGI(kTag, "Button pressed: 0x%02X -> HID key: 0x%04X", event.id, media_key);
-        hid_.MediaKeyPress(media_key);
-    } else if (event.state == protocol::kInputReleased) {
-        ESP_LOGI(kTag, "Button released: 0x%02X", event.id);
-        hid_.MediaKeyRelease(media_key);
-    }
+            case protocol::kButtonCd:
+                // Physical MEDIA -> Music app
+                media_key = hid::android::kAlMusicPlayer;
+                break;
 
-    return true;
-}
+            case protocol::kButtonOption:
+                // Physical OPTIONS -> F1
+                keycode = hid::key::kF1;
+                break;
+
+            case protocol::kButtonTel:
+                // Physical COM -> F2
+                keycode = hid::key::kF2;
+                break;
+
+            case protocol::kButtonNav:
+                // Physical NAV -> F3
+                keycode = hid::key::kF3;
+                break;
+
+            case protocol::kButtonMap:
+                // Physical MAP -> F4
+                keycode = hid::key::kF4;
+                break;
+
+            default:
+                return false;
+        }
+
+        if (event.state == protocol::kInputPressed) {
+            if (keycode != 0) {
+                ESP_LOGI(kTag, "Button pressed: 0x%02X -> KEY 0x%02X", event.id, keycode);
+                hid_.KeyPress(keycode);
+            } else {
+                ESP_LOGI(kTag, "Button pressed: 0x%02X -> HID key 0x%04X", event.id, media_key);
+                hid_.MediaKeyPress(media_key);
+            }
+        } else if (event.state == protocol::kInputReleased) {
+            if (keycode != 0) {
+                ESP_LOGI(kTag, "Button released: 0x%02X -> KEY 0x%02X", event.id, keycode);
+                hid_.KeyRelease(keycode);
+            } else {
+                ESP_LOGI(kTag, "Button released: 0x%02X", event.id);
+                hid_.MediaKeyRelease(media_key);
+            }
+        }
+
+        return true;
+    }
 
 }  // namespace idrive
