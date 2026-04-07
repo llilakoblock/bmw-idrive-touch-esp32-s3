@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 //
 // Main iDrive controller class - orchestrates CAN communication and input handling.
+// Protocol-specific CAN parsing is delegated to ControllerProtocol implementations.
 
 #pragma once
 
@@ -12,6 +13,7 @@
 #include "can/can_bus.h"
 #include "config/config.h"
 #include "hid/usb_hid_device.h"
+#include "idrive/controller_protocol.h"
 #include "input/button_handler.h"
 #include "input/joystick_handler.h"
 #include "input/rotary_handler.h"
@@ -67,17 +69,20 @@ class IDriveController {
     RotaryHandler                             *rotary_handler_   = nullptr;
     TouchpadHandler                           *touchpad_handler_ = nullptr;
 
-    // State tracking.
-    bool ready_               = false;
-    bool rotary_init_done_    = false;
-    bool touchpad_init_done_  = false;
-    bool touchpad_active_     = false;  // True after receiving first 0xBF response
-    bool light_init_done_     = false;
-    bool rotary_position_set_ = false;
-    bool light_enabled_       = true;
+    // Protocol detection and dispatch.
+    std::vector<std::unique_ptr<ControllerProtocol>> protocols_;
+    ControllerProtocol                              *active_protocol_ = nullptr;
 
-    uint32_t rotary_position_              = 0;
-    int      touchpad_init_ignore_counter_ = 0;
+    bool ProtocolReady() const { return active_protocol_ && active_protocol_->IsReady(); }
+
+    // Controller state.
+    bool ready_              = false;
+    bool touchpad_init_done_ = false;
+    bool touchpad_active_    = false;
+    bool light_init_done_    = false;
+    bool light_enabled_      = true;
+
+    int touchpad_init_ignore_counter_ = 0;
 
     // OTA trigger (optional, for button combo detection).
     ota::OtaTrigger *ota_trigger_ = nullptr;
@@ -92,11 +97,11 @@ class IDriveController {
 
     // CAN message handlers.
     void OnCanMessage(const CanMessage &msg);
-    void HandleInputMessage(const CanMessage &msg);
-    void HandleRotaryMessage(const CanMessage &msg);
     void HandleTouchpadMessage(const CanMessage &msg);
-    void HandleRotaryInitResponse(const CanMessage &msg);
     void HandleStatusMessage(const CanMessage &msg);
+
+    // Protocol event callback (receives InputEvents from active protocol).
+    void OnProtocolEvent(const InputEvent &event);
 
     // Initialization commands.
     void SendRotaryInit();

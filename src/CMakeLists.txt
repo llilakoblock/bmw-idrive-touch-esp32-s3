@@ -5,6 +5,8 @@ idf_component_register(
         "can/can_task.cpp"
         "hid/usb_hid_device.cpp"
         "idrive/idrive_controller.cpp"
+        "idrive/zbe4_protocol.cpp"
+        "idrive/zbe4_rev03_protocol.cpp"
         "input/button_handler.cpp"
         "input/joystick_handler.cpp"
         "input/rotary_handler.cpp"

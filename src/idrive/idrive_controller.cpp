@@ -5,6 +5,8 @@
 
 #include "esp_log.h"
 
+#include "idrive/zbe4_protocol.h"
+#include "idrive/zbe4_rev03_protocol.h"
 #include "ota/ota_trigger.h"
 #include "utils/utils.h"
 
@@ -42,26 +44,36 @@ void IDriveController::Init()
     touchpad_handler_ = touchpad.get();
     handlers_.push_back(std::move(touchpad));
 
+    // Register known controller protocols.
+    // Detection is first-come-first-served: whichever protocol's DetectionId()
+    // appears first on the CAN bus wins.
+    auto zbe4 = std::make_unique<ZBE4Protocol>();
+    zbe4->SetEventCallback([this](const InputEvent &e) { OnProtocolEvent(e); });
+    protocols_.push_back(std::move(zbe4));
+
+    auto zbe4r03 = std::make_unique<ZBE4Rev03Protocol>();
+    zbe4r03->SetEventCallback([this](const InputEvent &e) { OnProtocolEvent(e); });
+    protocols_.push_back(std::move(zbe4r03));
+
     // Set up CAN message callback.
     can_.SetCallback([this](const CanMessage &msg) { OnCanMessage(msg); });
 
-    // Record start time.
+    // Record start time and send initial commands.
     init_start_time_ = utils::GetMillis();
-
-    // Send initial commands.
     SendRotaryInit();
     SendLightCommand();
 
-    ESP_LOGI(kTag, "iDrive controller initialized, waiting for response...");
+    ESP_LOGI(kTag, "Waiting for controller detection...");
 }
 
 void IDriveController::Update()
 {
     uint32_t now = utils::GetMillis();
 
-    // Initialize touchpad after rotary is ready.
-    if (rotary_init_done_ && !touchpad_init_done_) {
-        ESP_LOGI(kTag, "Rotary init done, initializing touchpad");
+    // Initialize touchpad after protocol is ready.
+    if (ProtocolReady() && !touchpad_init_done_) {
+        ESP_LOGI(kTag, "Protocol ready (%s), initializing touchpad",
+                 active_protocol_->Name());
         SendTouchpadInit();
         last_touchpad_init_time_ = now;
         touchpad_init_done_      = true;
@@ -73,7 +85,6 @@ void IDriveController::Update()
         if (now - last_touchpad_init_time_ >= kTouchpadInitRetryMs) {
             last_touchpad_init_time_ = now;
             SendTouchpadInit();
-            // Log only every 20th attempt (~1 sec) to reduce spam.
             static int retry_count = 0;
             if (++retry_count % 20 == 0) {
                 ESP_LOGI(kTag, "Touchpad init retry #%d...", retry_count);
@@ -82,13 +93,13 @@ void IDriveController::Update()
     }
 
     // Mark controller as ready after cooldown.
-    if (!ready_ && rotary_init_done_ && touchpad_init_done_) {
+    if (!ready_ && ProtocolReady() && touchpad_init_done_) {
         if (cooldown_start_time_ == 0) {
             cooldown_start_time_ = now;
         }
         if (now - cooldown_start_time_ > config::kControllerCooldownMs) {
             ready_ = true;
-            ESP_LOGI(kTag, "iDrive controller ready!");
+            ESP_LOGI(kTag, "iDrive controller ready! (%s)", active_protocol_->Name());
         }
     }
 
@@ -104,8 +115,6 @@ void IDriveController::Update()
     if (now - last_poll_time_ >= config_.poll_interval_ms) {
         last_poll_time_ = now;
         SendPollCommand();
-        // G-series ZBE4 needs continuous touchpad polling.
-        // Always send - don't wait for touchpad_active_
         SendTouchpadInit();
     }
 
@@ -115,8 +124,8 @@ void IDriveController::Update()
         SendLightCommand();
     }
 
-    // Retry initialization if no response.
-    if (!rotary_init_done_ && (now - last_reinit_time_ >= kInitRetryIntervalMs)) {
+    // Retry rotary init while no protocol has been detected yet.
+    if (!active_protocol_ && (now - last_reinit_time_ >= kInitRetryIntervalMs)) {
         last_reinit_time_ = now;
         ESP_LOGW(kTag, "No init response - retrying...");
         SendRotaryInit();
@@ -141,120 +150,43 @@ void IDriveController::SetLightEnabled(bool enabled)
 
 void IDriveController::OnCanMessage(const CanMessage &msg)
 {
-    // Log incoming messages for debugging.
     if (config::kDebugCan) {
         ESP_LOGI(kTag, "RX <- ID: 0x%03lX, DLC:%d, Data: %02X %02X %02X %02X %02X %02X %02X %02X",
                  msg.id, msg.length, msg.data[0], msg.data[1], msg.data[2], msg.data[3],
                  msg.data[4], msg.data[5], msg.data[6], msg.data[7]);
     }
 
-    // Ignore our own transmitted messages (echo).
-    if (msg.id == can_id::kRotaryInitCmd || msg.id == can_id::kLight || msg.id == can_id::kPoll) {
+    // Ignore echo of our own transmitted messages.
+    if (msg.id == can_id::kRotaryInitCmd || msg.id == can_id::kLight ||
+        msg.id == can_id::kPoll || msg.id == can_id::kTouchInitCmd) {
         return;
     }
 
-    // Process by message ID.
-    switch (msg.id) {
-        case can_id::kInput:
-            HandleInputMessage(msg);
-            break;
-        case can_id::kRotary:
-            HandleRotaryMessage(msg);
-            break;
-        case can_id::kTouch:
-            HandleTouchpadMessage(msg);
-            break;
-        case can_id::kRotaryInit:
-            HandleRotaryInitResponse(msg);
-            break;
-        case can_id::kStatus:
-            HandleStatusMessage(msg);
-            break;
-    }
-}
-
-void IDriveController::HandleInputMessage(const CanMessage &msg)
-{
-    if (msg.length < 6)
+    // Touchpad and status are shared across all revisions.
+    if (msg.id == can_id::kTouch) {
+        HandleTouchpadMessage(msg);
         return;
-
-    uint8_t state      = msg.data[3] & 0x0F;
-    uint8_t input_type = msg.data[4];
-    uint8_t input      = msg.data[5];
-
-    if (config::kDebugKeys) {
-        ESP_LOGI(kTag, "Input: type=0x%02X, id=0x%02X, state=%d", input_type, input, state);
+    }
+    if (msg.id == can_id::kStatus) {
+        HandleStatusMessage(msg);
+        return;
     }
 
-    InputEvent event;
-
-    if (input_type == protocol::kInputTypeButton) {
-        // Forward button events to OTA trigger for combo detection.
-        if (ota_trigger_) {
-            ota_trigger_->OnButtonEvent(input, state);
+    // Auto-detect protocol: first frame matching a DetectionId() wins.
+    if (!active_protocol_) {
+        for (auto &p : protocols_) {
+            if (p->DetectionId() == msg.id) {
+                active_protocol_ = p.get();
+                active_protocol_->OnDetected();
+                ESP_LOGI(kTag, "Detected: %s", active_protocol_->Name());
+                break;
+            }
         }
-        event.type  = InputEvent::Type::Button;
-        event.id    = input;
-        event.state = state;
-    } else if (input_type == protocol::kInputTypeStick) {
-        event.type  = InputEvent::Type::Joystick;
-        event.id    = msg.data[3] >> 4;  // Direction in upper nibble.
-        event.state = state;
-    } else if (input_type == protocol::kInputTypeCenter) {
-        event.type  = InputEvent::Type::Joystick;
-        event.id    = protocol::kStickCenter;
-        event.state = state;
-    } else {
-        return;
     }
 
-    DispatchEvent(event);
-}
-
-void IDriveController::HandleRotaryMessage(const CanMessage &msg)
-{
-    if (msg.length < 5)
-        return;
-
-    ESP_LOGD(kTag, "Rotary data received");
-
-    if (!rotary_position_set_) {
-        // Set initial position.
-        uint8_t  rotary_step_b = msg.data[4];
-        uint32_t new_pos       = msg.data[3] + (msg.data[4] * 0x100);
-
-        switch (rotary_step_b) {
-            case 0x7F:
-                rotary_position_ = new_pos + 1;
-                break;
-            case 0x80:
-                rotary_position_ = new_pos - 1;
-                break;
-            default:
-                rotary_position_ = new_pos;
-                break;
-        }
-        rotary_position_set_ = true;
-        ESP_LOGI(kTag, "Rotary initial position: %lu", rotary_position_);
-        return;
-    }
-
-    uint32_t new_position = msg.data[3] + (msg.data[4] * 0x100);
-    int      delta        = static_cast<int>(new_position) - static_cast<int>(rotary_position_);
-
-    // Handle wraparound.
-    if (delta > 32768) {
-        delta -= 65536;
-    } else if (delta < -32768) {
-        delta += 65536;
-    }
-
-    if (delta != 0) {
-        InputEvent event;
-        event.type  = InputEvent::Type::Rotary;
-        event.delta = delta;
-        DispatchEvent(event);
-        rotary_position_ = new_position;
+    // Delegate to active protocol.
+    if (active_protocol_ && active_protocol_->HandlesId(msg.id)) {
+        active_protocol_->OnMessage(msg);
     }
 }
 
@@ -275,21 +207,11 @@ void IDriveController::HandleTouchpadMessage(const CanMessage &msg)
     if (config::kDebugTouchpad) {
         const char *type_str = "?";
         switch (touch_type) {
-            case protocol::kTouchFingerRemoved:
-                type_str = "REMOVED";
-                break;
-            case protocol::kTouchSingle:
-                type_str = "SINGLE";
-                break;
-            case protocol::kTouchMulti:
-                type_str = "MULTI";
-                break;
-            case protocol::kTouchTriple:
-                type_str = "TRIPLE";
-                break;
-            case protocol::kTouchQuad:
-                type_str = "QUAD";
-                break;
+            case protocol::kTouchFingerRemoved: type_str = "REMOVED"; break;
+            case protocol::kTouchSingle:        type_str = "SINGLE";  break;
+            case protocol::kTouchMulti:         type_str = "MULTI";   break;
+            case protocol::kTouchTriple:        type_str = "TRIPLE";  break;
+            case protocol::kTouchQuad:          type_str = "QUAD";    break;
         }
         ESP_LOGD(kTag, "Touch: type=0x%02X (%s) [%02X %02X %02X %02X %02X %02X %02X %02X]",
                  touch_type, type_str, msg.data[0], msg.data[1], msg.data[2], msg.data[3],
@@ -297,7 +219,8 @@ void IDriveController::HandleTouchpadMessage(const CanMessage &msg)
     }
 
     // Ignore initial touchpad messages during initialization.
-    if (touchpad_init_ignore_counter_ < config::kTouchpadInitIgnoreCount && rotary_init_done_) {
+    if (touchpad_init_ignore_counter_ < config::kTouchpadInitIgnoreCount &&
+        ProtocolReady()) {
         touchpad_init_ignore_counter_++;
         ESP_LOGI(kTag, "Touchpad ignoring message %d/%d", touchpad_init_ignore_counter_,
                  config::kTouchpadInitIgnoreCount);
@@ -324,28 +247,18 @@ void IDriveController::HandleTouchpadMessage(const CanMessage &msg)
         // Byte 6: [high nibble = F2 Y low 4 bits] [low nibble = F2 X high bit]
         // Byte 7: Finger 2 Y high 5 bits (0-31)
 
-        // Finger 1 coordinates (0-511 range each)
         event.x = msg.data[1] + 256 * (msg.data[2] & 0x01);
         event.y = (static_cast<int16_t>(msg.data[3]) << 4) | (msg.data[2] >> 4);
 
-        // Check for multi-touch (state 0x00 = two fingers)
         event.two_fingers = (touch_type == protocol::kTouchMulti);
 
         if (event.two_fingers) {
-            // Finger 2 coordinates (0-511 range each)
             event.x2 = msg.data[5] + 256 * (msg.data[6] & 0x01);
             event.y2 = (static_cast<int16_t>(msg.data[7]) << 4) | (msg.data[6] >> 4);
         }
 
         DispatchEvent(event);
     }
-}
-
-void IDriveController::HandleRotaryInitResponse(const CanMessage &msg)
-{
-    (void) msg;
-    ESP_LOGI(kTag, "Rotary Init Success");
-    rotary_init_done_ = true;
 }
 
 void IDriveController::HandleStatusMessage(const CanMessage &msg)
@@ -356,20 +269,38 @@ void IDriveController::HandleStatusMessage(const CanMessage &msg)
     ESP_LOGD(kTag, "Status message: data[4]=0x%02X", msg.data[4]);
 
     if (msg.data[4] == protocol::kStatusNoInit) {
-        // Lost initialization - reinitialize.
         ESP_LOGW(kTag, "iDrive lost init - reinitializing");
         ready_                        = false;
-        rotary_init_done_             = false;
         light_init_done_              = false;
         touchpad_init_done_           = false;
         touchpad_active_              = false;
-        rotary_position_set_          = false;
         cooldown_start_time_          = 0;
         touchpad_init_ignore_counter_ = 0;
+        last_reinit_time_             = utils::GetMillis();
         init_start_time_              = utils::GetMillis();
+
+        // Reset protocol state and return to detection mode.
+        // The next matching CAN frame will re-detect the same protocol.
+        if (active_protocol_) {
+            active_protocol_->Reset();
+            active_protocol_ = nullptr;
+        }
 
         SendRotaryInit();
     }
+}
+
+// =============================================================================
+// Protocol Event Callback
+// =============================================================================
+
+void IDriveController::OnProtocolEvent(const InputEvent &event)
+{
+    // Notify OTA trigger for button combo detection.
+    if (event.type == InputEvent::Type::Button && ota_trigger_) {
+        ota_trigger_->OnButtonEvent(event.id, event.state);
+    }
+    DispatchEvent(event);
 }
 
 // =============================================================================
@@ -380,22 +311,17 @@ void IDriveController::SendRotaryInit()
 {
     uint8_t data[8] = {0x1D, 0xE1, 0x00, 0xF0, 0xFF, 0x7F, 0xDE, 0x04};
     can_.Send(can_id::kRotaryInitCmd, data, 8);
-    rotary_position_set_ = false;
     ESP_LOGI(kTag, "Sent rotary init frame");
 }
 
 void IDriveController::SendTouchpadInit()
 {
-    // G-series ZBE4 touchpad poll message.
-    // byte[0] bit4 (0x10) must be SET for coordinates to update.
-    // Cycling is NOT required - fixed 0x10 works perfectly.
     uint8_t data[8] = {0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     can_.Send(can_id::kTouchInitCmd, data, 8);
 }
 
 void IDriveController::SendLightCommand()
 {
-    // Light ON: 0xFD 0x00, Light OFF: 0xFE 0x00 (as per original code)
     uint8_t data[2];
     data[0] = light_enabled_ ? 0xFD : 0xFE;
     data[1] = 0x00;
@@ -420,7 +346,7 @@ void IDriveController::DispatchEvent(const InputEvent &event)
 
     for (auto &handler : handlers_) {
         if (handler->Handle(event)) {
-            break;  // Event was handled.
+            break;
         }
     }
 }

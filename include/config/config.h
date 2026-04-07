@@ -86,12 +86,13 @@ constexpr bool kDebugTouchpad = true;  // See touch data
 namespace can_id {
 
 // Incoming messages (from iDrive controller)
-constexpr uint32_t kInput        = 0x267;  // Button and joystick input
-constexpr uint32_t kRotary       = 0x264;  // Rotary encoder data
-constexpr uint32_t kRotaryInit   = 0x277;  // Rotary initialization response
-constexpr uint32_t kStatus       = 0x5E7;  // Status messages
-constexpr uint32_t kTouch        = 0xBF;   // Touchpad data (RX)
-constexpr uint32_t kTouchInitCmd = 0x317;  // Touchpad init command (TX)
+constexpr uint32_t kInput        = 0x267;  // ZBE4: button and joystick input
+constexpr uint32_t kRotary       = 0x264;  // ZBE4: rotary encoder data
+constexpr uint32_t kRotaryInit   = 0x277;  // ZBE4: rotary initialization response
+constexpr uint32_t kInputAlt     = 0x25B;  // ZBE4-03: all input (buttons, joystick, rotary)
+constexpr uint32_t kStatus       = 0x5E7;  // Status messages (all revisions)
+constexpr uint32_t kTouch        = 0xBF;   // Touchpad data (all revisions)
+constexpr uint32_t kTouchInitCmd = 0x317;  // Touchpad init command (TX, all revisions)
 
 // Outgoing messages (to iDrive controller)
 constexpr uint32_t kRotaryInitCmd = 0x273;  // Rotary initialization command
@@ -111,14 +112,15 @@ constexpr uint8_t kInputTypeButton = 0xC0;
 constexpr uint8_t kInputTypeStick  = 0xDD;
 constexpr uint8_t kInputTypeCenter = 0xDE;
 
-// Button identifiers
+// Button identifiers (logical IDs shared across all revisions)
 constexpr uint8_t kButtonMenu   = 0x01;
 constexpr uint8_t kButtonBack   = 0x02;
 constexpr uint8_t kButtonOption = 0x04;
 constexpr uint8_t kButtonRadio  = 0x08;
-constexpr uint8_t kButtonCd     = 0x10;
+constexpr uint8_t kButtonCd     = 0x10;  // MEDIA on ZBE4-03
 constexpr uint8_t kButtonNav    = 0x20;
-constexpr uint8_t kButtonTel    = 0x40;
+constexpr uint8_t kButtonTel    = 0x40;  // COM on ZBE4-03
+constexpr uint8_t kButtonMap    = 0x80;  // MAP on ZBE4-03 (not present on ZBE4)
 
 // Joystick directions
 constexpr uint8_t kStickUp     = 0x01;
