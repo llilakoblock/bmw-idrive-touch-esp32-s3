@@ -30,15 +30,36 @@ Research findings for BMW G-series iDrive controller (ZBE4) touchpad functionali
 | 0x0BF | RX | Touchpad response data |
 | 0x202 | TX | Backlight control |
 | 0x501 | TX | Keepalive poll |
+| 0x510 | TX | K-CAN4 NM keepalive (required by rev -03, see below) |
 | 0x5E7 | RX | Status messages |
 
 ### Messages NOT Used (reference only)
 
 | ID (Hex) | Description | Notes |
 |----------|-------------|-------|
-| 0x510 | K-CAN4 wake-up | Not needed for touchpad |
 | 0x03C | Ignition status | Not needed for touchpad |
 | 0x560 | Bus alive (K-CAN2) | F-series only |
+
+### Network Management Keepalive (0x510)
+
+Revision `-03` controllers (e.g. 6582 6829079-03) implement stricter network
+management than earlier units: they ignore the 0x501/0x317 application traffic
+for their sleep decision and go back to sleep ~10 s after a manual wake. About
+2.5 s before sleeping they announce it on `0x5E7` with `27 67 2D FF FF FF FF FF`.
+While asleep they do not ACK, so every ESP32 transmission fails with
+`ESP_ERR_TIMEOUT`.
+
+Sending the head-unit NM keepalive every 500 ms keeps them awake:
+
+```cpp
+// 0x510, every 500 ms
+uint8_t data[8] = {0x40, 0x10, 0x00, 0x02, 0x03, 0x92, 0x01, 0x00};
+```
+
+Note: no CAN frame is known to *wake* a sleeping rev -03 (community testing of
+0x510/0x130/0x440/0x563/0x12F found none that trigger wake) - the unit wakes
+only on physical input (center button). The keepalive prevents it from going
+back to sleep afterwards.
 
 ---
 

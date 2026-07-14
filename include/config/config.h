@@ -44,6 +44,7 @@ constexpr uint32_t kLightInitDurationMs  = 1000;
 constexpr uint32_t kLightKeepaliveMs     = 10000;
 constexpr uint32_t kControllerCooldownMs = 750;
 constexpr uint32_t kInitRetryIntervalMs  = 5000;
+constexpr uint32_t kNmKeepaliveMs        = 500;  // K-CAN4 network-management keepalive
 
 // Input Configuration
 constexpr int kMinMouseTravel          = 1;  // Raw coords: 1 step threshold
@@ -98,6 +99,7 @@ constexpr uint32_t kTouchInitCmd = 0x317;  // Touchpad init command (TX, all rev
 constexpr uint32_t kRotaryInitCmd = 0x273;  // Rotary initialization command
 constexpr uint32_t kLight         = 0x202;  // Light control
 constexpr uint32_t kPoll          = 0x501;  // Keepalive poll
+constexpr uint32_t kNmKeepalive   = 0x510;  // K-CAN4 NM keepalive (prevents sleep on -03)
 
 }  // namespace can_id
 

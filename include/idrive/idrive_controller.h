@@ -94,6 +94,7 @@ class IDriveController {
     uint32_t last_light_time_         = 0;
     uint32_t last_reinit_time_        = 0;
     uint32_t last_touchpad_init_time_ = 0;
+    uint32_t last_nm_keepalive_time_  = 0;
 
     // CAN message handlers.
     void OnCanMessage(const CanMessage &msg);
@@ -108,6 +109,7 @@ class IDriveController {
     void SendTouchpadInit();
     void SendLightCommand();
     void SendPollCommand();
+    void SendNmKeepalive();
 
     // Input event dispatch.
     void DispatchEvent(const InputEvent &event);

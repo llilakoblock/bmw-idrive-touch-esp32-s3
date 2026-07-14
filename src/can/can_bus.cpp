@@ -29,7 +29,8 @@ bool CanBus::Init(uint32_t baudrate)
     general_config.tx_queue_len          = 10;
     general_config.rx_queue_len          = 20;  // Larger RX buffer for high traffic
     general_config.alerts_enabled = TWAI_ALERT_RX_DATA | TWAI_ALERT_ERR_PASS | TWAI_ALERT_BUS_OFF |
-                                    TWAI_ALERT_TX_FAILED | TWAI_ALERT_RX_QUEUE_FULL;
+                                    TWAI_ALERT_BUS_RECOVERED | TWAI_ALERT_TX_FAILED |
+                                    TWAI_ALERT_RX_QUEUE_FULL;
     general_config.clkout_divider = 0;
     general_config.intr_flags     = ESP_INTR_FLAG_LEVEL1;
 
@@ -75,7 +76,8 @@ bool CanBus::Init(uint32_t baudrate)
     return true;
 }
 
-bool CanBus::Send(uint32_t id, const uint8_t *data, uint8_t length, bool extended)
+bool CanBus::Send(uint32_t id, const uint8_t *data, uint8_t length, bool extended,
+                  bool single_shot)
 {
     if (!initialized_) {
         ESP_LOGW(kTag, "CAN bus not initialized");
@@ -85,6 +87,7 @@ bool CanBus::Send(uint32_t id, const uint8_t *data, uint8_t length, bool extende
     twai_message_t message   = {};
     message.identifier       = id;
     message.extd             = extended ? 1 : 0;
+    message.ss               = single_shot ? 1 : 0;
     message.data_length_code = length;
 
     for (int i = 0; i < length && i < 8; ++i) {
@@ -132,11 +135,23 @@ void CanBus::HandleAlerts(uint32_t alerts)
     if (alerts & TWAI_ALERT_BUS_OFF) {
         ESP_LOGE(kTag, "CAN: Bus off state - attempting recovery");
         twai_initiate_recovery();
-        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
+    if (alerts & TWAI_ALERT_BUS_RECOVERED) {
+        // After recovery the driver lands in stopped state and must be
+        // restarted, otherwise the bus stays dead.
+        ESP_LOGI(kTag, "CAN: Bus recovered - restarting driver");
+        twai_start();
     }
 
     if (alerts & TWAI_ALERT_TX_FAILED) {
-        ESP_LOGW(kTag, "CAN: TX failed");
+        // No ACK from the peer (e.g. controller asleep) fires this on every
+        // periodic frame - rate-limit to avoid flooding the log.
+        tx_failed_count_++;
+        if (tx_failed_count_ % 10 == 1) {
+            ESP_LOGW(kTag, "CAN: TX failed x%lu - no ACK, controller asleep or disconnected?",
+                     tx_failed_count_);
+        }
     }
 
     if (alerts & TWAI_ALERT_RX_QUEUE_FULL) {

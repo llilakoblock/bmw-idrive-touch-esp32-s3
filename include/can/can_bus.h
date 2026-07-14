@@ -38,7 +38,11 @@ class CanBus {
     bool Init(uint32_t baudrate = 500000);
 
     // Send a CAN message.
-    bool Send(uint32_t id, const uint8_t *data, uint8_t length, bool extended = false);
+    // single_shot: transmit once without automatic retransmission. Use for
+    // periodic frames so an un-ACKed frame (sleeping peer) cannot jam the TX
+    // queue with endless retries.
+    bool Send(uint32_t id, const uint8_t *data, uint8_t length, bool extended = false,
+              bool single_shot = false);
 
     // Send a CAN message using CanMessage struct.
     bool Send(const CanMessage &message);
@@ -57,7 +61,8 @@ class CanBus {
     gpio_num_t      rx_pin_;
     gpio_num_t      tx_pin_;
     MessageCallback callback_;
-    bool            initialized_ = false;
+    bool            initialized_     = false;
+    uint32_t        tx_failed_count_ = 0;
 
     void HandleAlerts(uint32_t alerts);
     void ReceiveMessages();

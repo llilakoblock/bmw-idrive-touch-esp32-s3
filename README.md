@@ -551,6 +551,7 @@ if (xSemaphoreTake(mutex_, portMAX_DELAY) == pdTRUE) {
          │  Periodic tasks:                        │
          │  - Touchpad poll (0x317) every 50ms     │
          │  - Keepalive (0x501) every 50ms         │
+         │  - NM keepalive (0x510) every 500ms     │
          │  - Light (0x202) every 10s              │
          └─────────────────────────────────────────┘
 ```
@@ -652,6 +653,7 @@ This controller uses **K-CAN4** at **500 kbps**. Key difference from F-series: t
 | 0x0BF | RX | Touchpad response data |
 | 0x202 | TX | Backlight control |
 | 0x501 | TX | Keepalive poll |
+| 0x510 | TX | K-CAN4 NM keepalive (prevents rev -03 sleep) |
 | 0x5E7 | RX | Status messages |
 
 ### Touchpad Protocol (KEY DISCOVERY)
@@ -731,6 +733,17 @@ Data: {0xFE, 0x00}  // OFF
 ```
 Data: {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 ```
+
+**NM Keepalive (0x510), every 500ms:**
+```
+Data: {0x40, 0x10, 0x00, 0x02, 0x03, 0x92, 0x01, 0x00}
+```
+
+Required for revision `-03` controllers (e.g. 6582 6829079-03): they ignore
+application traffic for their sleep decision and go back to sleep ~10s after a
+manual wake unless this network-management frame is present. Note that no known
+CAN frame *wakes* a sleeping rev -03 - press the center button once after
+power-on. See `docs/BMW_iDrive_CAN_Protocol_Research.md` for details.
 
 ## Building and Flashing
 

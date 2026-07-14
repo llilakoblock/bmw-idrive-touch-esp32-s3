@@ -60,6 +60,7 @@ void IDriveController::Init()
 
     // Record start time and send initial commands.
     init_start_time_ = utils::GetMillis();
+    SendNmKeepalive();
     SendRotaryInit();
     SendLightCommand();
 
@@ -124,6 +125,14 @@ void IDriveController::Update()
         SendLightCommand();
     }
 
+    // Periodic K-CAN4 network-management keepalive. Revision -03 controllers
+    // ignore the 0x501/0x317 application traffic for sleep decisions and doze
+    // off ~10s after wake unless this frame is on the bus.
+    if (now - last_nm_keepalive_time_ >= config::kNmKeepaliveMs) {
+        last_nm_keepalive_time_ = now;
+        SendNmKeepalive();
+    }
+
     // Retry rotary init while no protocol has been detected yet.
     if (!active_protocol_ && (now - last_reinit_time_ >= kInitRetryIntervalMs)) {
         last_reinit_time_ = now;
@@ -158,7 +167,8 @@ void IDriveController::OnCanMessage(const CanMessage &msg)
 
     // Ignore echo of our own transmitted messages.
     if (msg.id == can_id::kRotaryInitCmd || msg.id == can_id::kLight ||
-        msg.id == can_id::kPoll || msg.id == can_id::kTouchInitCmd) {
+        msg.id == can_id::kPoll || msg.id == can_id::kTouchInitCmd ||
+        msg.id == can_id::kNmKeepalive) {
         return;
     }
 
@@ -307,17 +317,21 @@ void IDriveController::OnProtocolEvent(const InputEvent &event)
 // CAN Commands
 // =============================================================================
 
+// All frames below are sent single-shot: each one is periodic or retried at
+// the application level, and a driver-level retransmission of an un-ACKed
+// frame would block the TX queue for as long as the controller sleeps.
+
 void IDriveController::SendRotaryInit()
 {
     uint8_t data[8] = {0x1D, 0xE1, 0x00, 0xF0, 0xFF, 0x7F, 0xDE, 0x04};
-    can_.Send(can_id::kRotaryInitCmd, data, 8);
+    can_.Send(can_id::kRotaryInitCmd, data, 8, false, true);
     ESP_LOGI(kTag, "Sent rotary init frame");
 }
 
 void IDriveController::SendTouchpadInit()
 {
     uint8_t data[8] = {0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    can_.Send(can_id::kTouchInitCmd, data, 8);
+    can_.Send(can_id::kTouchInitCmd, data, 8, false, true);
 }
 
 void IDriveController::SendLightCommand()
@@ -325,13 +339,22 @@ void IDriveController::SendLightCommand()
     uint8_t data[2];
     data[0] = light_enabled_ ? 0xFD : 0xFE;
     data[1] = 0x00;
-    can_.Send(can_id::kLight, data, 2);
+    can_.Send(can_id::kLight, data, 2, false, true);
 }
 
 void IDriveController::SendPollCommand()
 {
     uint8_t data[8] = {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    can_.Send(can_id::kPoll, data, 8);
+    can_.Send(can_id::kPoll, data, 8, false, true);
+}
+
+void IDriveController::SendNmKeepalive()
+{
+    // K-CAN4 network-management keepalive as sent by the head unit. Without
+    // it a bench-powered ZBE4 -03 announces sleep on 0x5E7 (27 67 2D ...)
+    // and powers down its CAN interface until the next physical input.
+    uint8_t data[8] = {0x40, 0x10, 0x00, 0x02, 0x03, 0x92, 0x01, 0x00};
+    can_.Send(can_id::kNmKeepalive, data, 8, false, true);
 }
 
 // =============================================================================
